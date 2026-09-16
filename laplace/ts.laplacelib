@@ -891,3 +891,145 @@ real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta,
     return normal_lpdf(delta_y | mu_t, sigma);
 }
 
+// Beyond the linear Gaussian mean ========================================================================================================
+
+// Exponential smoothing (Holt–Winters) ===================================================================================================
+//@laplace
+//@brief Additive Holt–Winters one-step-ahead predictions
+//@param real alpha   level smoothing, (0,1)
+//@param real beta    trend smoothing, (0,1)
+//@param real gamma   seasonal smoothing, (0,1)
+//@param real l0      level seed
+//@param real b0      trend seed
+//@param vector s0    seasonal seeds s_{-m+1..0}, length m, MUST sum to zero
+//@param int m        seasonal period, m >= 1
+vector exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m){
+    int N = size(y_obs);
+    vector[N] y_hat;  vector[N + 1] lt;      
+    vector[N + 1] bt; vector[N + m] st;       
+
+    // Initialize the process 
+    lt[1]   = l0;
+    bt[1]   = b0;
+    st[1:m] = s0;
+
+    for (t in 1:N) {
+        // Resolve y_hat 
+        y_hat[t]  = lt[t] + bt[t] + st[t];
+        
+        // Level 
+        lt[t + 1] = alpha * (y_obs[t] - st[t])    + (1 - alpha) * (lt[t] + bt[t]);
+
+        // Trend 
+        bt[t + 1] = beta  * (lt[t + 1] - lt[t])   + (1 - beta)  * bt[t];
+
+        // Seasonal 
+        st[t + m] = gamma * (y_obs[t] - lt[t + 1])+ (1 - gamma) * st[t];
+    }
+    return y_hat;
+}
+
+//@laplace
+//@brief Additive Holt–Winters one-step-ahead predictions
+//@param real alpha   level smoothing, (0,1)
+//@param real beta    trend smoothing, (0,1)
+//@param real gamma   seasonal smoothing, (0,1)
+//@param real l0      level seed
+//@param real b0      trend seed
+//@param vector s0    seasonal seeds s_{-m+1..0}, length m, MUST sum to zero
+//@param int m        seasonal period, m >= 1
+vector exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, matrix X, vector beta_c){
+    int N = size(y_obs);
+    vector[N] y_hat;  vector[N + 1] lt;      
+    vector[N + 1] bt; vector[N + m] st;       
+
+    // Initialize the process 
+    lt[1]   = l0;
+    bt[1]   = b0;
+    st[1:m] = s0;
+
+    for (t in 1:N) {
+        // Resolve y_hat 
+        y_hat[t]  = lt[t] + bt[t] + st[t] + X[t] * beta_c;
+        
+        // Level 
+        lt[t + 1] = alpha * (y_obs[t] - st[t])    + (1 - alpha) * (lt[t] + bt[t]);
+
+        // Trend 
+        bt[t + 1] = beta  * (lt[t + 1] - lt[t])   + (1 - beta)  * bt[t];
+
+        // Seasonal 
+        st[t + m] = gamma * (y_obs[t] - lt[t + 1])+ (1 - gamma) * st[t];
+    }
+    return y_hat;
+}
+
+//@laplace
+//@brief Additive Holt–Winters Log Pointwise Density Function 
+//@param real alpha   level smoothing, (0,1)
+//@param real beta    trend smoothing, (0,1)
+//@param real gamma   seasonal smoothing, (0,1)
+//@param real l0      level seed
+//@param real b0      trend seed
+//@param vector s0    seasonal seeds s_{-m+1..0}, length m, MUST sum to zero
+//@param int m        seasonal period, m >= 1
+real exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sd){
+    int N = size(y_obs);
+    vector[N] y_hat;  vector[N + 1] lt;      
+    vector[N + 1] bt; vector[N + m] st;       
+
+    // Initialize the process 
+    lt[1]   = l0;
+    bt[1]   = b0;
+    st[1:m] = s0;
+
+    for (t in 1:N) {
+        // Resolve y_hat 
+        y_hat[t]  = lt[t] + bt[t] + st[t];
+        
+        // Level 
+        lt[t + 1] = alpha * (y_obs[t] - st[t])    + (1 - alpha) * (lt[t] + bt[t]);
+
+        // Trend 
+        bt[t + 1] = beta  * (lt[t + 1] - lt[t])   + (1 - beta)  * bt[t];
+
+        // Seasonal 
+        st[t + m] = gamma * (y_obs[t] - lt[t + 1])+ (1 - gamma) * st[t];
+    }
+    return normal_lpdf(y_obs | y_hat, sd);
+}
+
+//@laplace
+//@brief Additive Holt–Winters Log Pointwise Density Function 
+//@param real alpha   level smoothing, (0,1)
+//@param real beta    trend smoothing, (0,1)
+//@param real gamma   seasonal smoothing, (0,1)
+//@param real l0      level seed
+//@param real b0      trend seed
+//@param vector s0    seasonal seeds s_{-m+1..0}, length m, MUST sum to zero
+//@param int m        seasonal period, m >= 1
+real exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sd, matrix X, vector beta_c){
+    int N = size(y_obs);
+    vector[N] y_hat;  vector[N + 1] lt;      
+    vector[N + 1] bt; vector[N + m] st;       
+
+    // Initialize the process 
+    lt[1]   = l0;
+    bt[1]   = b0;
+    st[1:m] = s0;
+
+    for (t in 1:N) {
+        // Resolve y_hat 
+        y_hat[t]  = lt[t] + bt[t] + st[t] + X[t] * beta_c;
+        
+        // Level 
+        lt[t + 1] = alpha * (y_obs[t] - st[t])    + (1 - alpha) * (lt[t] + bt[t]);
+
+        // Trend 
+        bt[t + 1] = beta  * (lt[t + 1] - lt[t])   + (1 - beta)  * bt[t];
+
+        // Seasonal 
+        st[t + m] = gamma * (y_obs[t] - lt[t + 1])+ (1 - gamma) * st[t];
+    }
+    return normal_lpdf(y_obs | y_hat, sd);
+}
