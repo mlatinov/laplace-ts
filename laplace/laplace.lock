@@ -1,0 +1,8 @@
+root = ["ts"]
+
+[[package]]
+name = "ts"
+version = "0.1.0"
+checksum = "sha256:3018f55fce027d6e5e3c33b55bb4923411b93d029f818836ff9ddd9d747165c5"
+source = "git+https://github.com/mlatinov/laplace-ts@0.1.0#laplace"
+dependencies = []
