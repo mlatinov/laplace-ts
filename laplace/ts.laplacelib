@@ -1,0 +1,236 @@
+
+// Helpers =====================================================================================================
+//@laplace 
+//@brief Build a Lag Lag Design Matrix 
+//@param int T Time Series Length
+//@param int P Number of previous observation to consider 
+//@param vector y Observations of interest
+//@example matrix X = ts::lag_design(T, 10, y);
+//@return matrix[N, p] X
+matrix lag_design(int p, vector y){
+    int T = num_elements(y);
+    int N = T - p;
+    matrix[N, p] X;
+
+    vector[N] y_obs = y[(p + 1):T];
+    for(i in 1:p){
+        X[, i] = y[(p + 1 - i):(T - i)];
+    }
+    return X;
+}
+
+//@laplace
+//@brief Difference a time series d times
+//@param vector y
+//@param int d
+//@return vector[T-d]
+vector difference(vector y, int d) {
+    int T = num_elements(y);
+    vector[T] current = y;
+    vector[T] next;
+
+    for (k in 1:d) {
+        int n = T - k + 1;
+
+        for (t in 1:(n - 1))
+            next[t] = current[t + 1] - current[t];
+
+        current[1:(n - 1)] = next[1:(n - 1)];
+    }
+
+    return current[1:(T - d)];
+}
+
+// Linear Mean Recursions =======================================================================================
+
+
+// Autoregression AR(p) Model ==================================================================================
+//@laplace
+//@brief Autoregression primary for computing mu_t from AR p model
+//@param alpha Intercept
+//@param vector p with length of p. Partial Persistence
+//@param matrix X coming from a ts::lag_design function 
+//@example mu_t = ts::ar(alpha, phi, X);
+//@return vector mu_t;
+vector ar(real alpha, vector phi, matrix X){
+    return alpha + X * phi;
+}
+
+// Autoregression Log Pointwise distribution function
+//@laplace 
+//@brief Autoregression Model AR Log Pointwise distribution function
+//@param alpha Intercept
+//@param vector p with length of p. Partial Persistence
+//@param matrix X coming from a ts::lag_design function 
+//@param vector y_obs with length N Computed as T - P
+//@param real sd
+real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X, real sd){
+    return normal_lpdf(y_obs | alpha + X * phi , sd);
+
+}
+//@laplace 
+//@brief Autoregression Model AR Log Pointwise distribution function
+//@param vector alpha Intercept
+//@param vector p with length of p. Partial Persistence
+//@param matrix X coming from a ts::lag_design function 
+//@param vector y_obs with length N Computed as T - P
+//@param real sd
+real ar_lpdf(vector y_obs, vector alpha, vector phi, matrix X, real sd){
+    return normal_lpdf(y_obs | alpha + X * phi , sd);
+
+}
+//@laplace 
+//@brief Autoregression Model AR Log Pointwise distribution function
+//@param vector alpha Intercept
+//@param vector p with length of p. Partial Persistence
+//@param matrix X coming from a ts::lag_design function 
+//@param vector y_obs with length N Computed as T - P
+//@param vector sd
+real ar_lpdf(vector y_obs, vector alpha, vector phi, matrix X, vector sd){
+    return normal_lpdf(y_obs | alpha + X * phi , sd);
+}
+
+// MA(q) Moving Average =========================================================================================
+
+// Moving Average Primary 
+//@laplace 
+//@brief MA q Moving Average 
+//@param real alpha
+//@param vector theta
+//@param vector y
+//@example mu_eps = ts::ma(y, alpha, theta, T);
+//@return Array of vectors in position array[1] is the mu_t and in array[2] is eps
+array[] vector ma(vector y, real alpha, vector theta){
+    int T = num_elements(y);
+    int q = num_elements(theta);
+    array[2] vector[T] results; // array[1] mu_t and array[2] eps
+
+    for(t in 1:T){
+        results[1][t] = alpha; 
+
+        for(j in 1:min(q, t - 1)){
+            results[1][t] += theta[j] * results[2][t - j];
+        }
+
+        results[2][t] += y[t] - results[1][t];
+    }
+    return results;
+}
+
+// Moving Average Log Pointwise Probability Function 
+//@laplace 
+//@brief Moving Average Log Pointwise Probability Function 
+//@param vector y_obs
+//@param real alpha
+//@param vector theta
+//@param real sigma
+real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma){
+    int T = num_elements(y_obs);
+    int q = num_elements(theta);
+    vector[T] mu_t;
+    vector[T] eps;
+
+    for(t in 1:T){
+        mu_t[t] = alpha;
+
+        for(j in 1:min(q, t - 1)){
+            mu_t[t] += theta[j] * eps[t - j];
+        }
+        eps[t] += y_obs[t] - eps[t]; 
+    }
+    return normal_lpdf(y_obs | mu_t, sigma);
+}
+
+// Autoregression Moving Average ARMA(p, q) =================================================================
+//@laplace 
+//@brief Autoregression Moving Average primary
+//@param real alpha
+//@param vector phi
+//@param vector theta 
+//@param vector y_obs
+//@example results = ts::arma(y_obs, alpha, p, q, phi, theta);
+//@return array of 2 where array[1] is mu_t and array[2] is eps
+array [] vector arma(vector y_obs, real alpha, vector phi, vector theta){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);
+    int q = num_elements(theta);
+    array[2] vector[T] results; // array[1] mu_t , array[2] eps
+
+    for(t in 1:T){
+        for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * y_obs[t - i];
+        for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        results[2][t] = y_obs[t] - results[1][t];
+    }
+    return results;
+}
+
+// ARMA(p, q) Log Pointwise Density Function 
+//@laplace 
+//@brief ARMA Log Pointwise Density Function 
+//@param real alpha
+//@param vector phi
+//@param vector theta 
+//@param vector y_obs
+//@param real sigma
+real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);
+    int q = num_elements(theta);
+    vector[T] mu_t;
+    vector[T] eps;
+
+    for(t in 1:T){
+        for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * y_obs[t - i];
+        for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
+        eps[t] = y_obs[t] - mu_t[t];
+    }
+    return normal_lpdf(y_obs | mu_t, sigma);
+}
+
+// Autoregression Moving Average with Differencing ARIMA(p, q, d) =====================================================
+//@laplace 
+//@brief Autoregression Moving Average Differencing primary
+//@param real alpha
+//@param int d
+//@param vector phi
+//@param vector theta 
+//@param vector y_obs
+array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);
+    int q = num_elements(theta);
+    array[2] vector[T - d] results; // array[1] mu_t , array[2] eps
+    vector[T - d] delta_y = difference(y_obs, d);
+
+    for(t in 1:T){
+        for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * delta_y[t - i];
+        for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        results[2][t] = delta_y[t] - results[1][t];
+    }
+    return results;
+}
+
+//@laplace 
+//@brief ARIMA Log Pointwise Density Function
+//@param real alpha
+//@param int d
+//@param vector phi
+//@param vector theta 
+//@param vector y_obs
+//@param real sigma
+real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real sigma){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);
+    int q = num_elements(theta);
+    
+    vector[T - d] mu_t;
+    vector[T - d] eps;
+    vector[T - d] delta_y = difference(y_obs, d);
+
+    for(t in 1:T){
+        for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * delta_y[t - i];
+        for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
+        eps[t] = delta_y[t] - mu_t[t];
+    }
+    return normal_lpdf(delta_y | mu_t, sigma);
+}
