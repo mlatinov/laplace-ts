@@ -18,6 +18,16 @@ matrix lag_design(int p, vector y){
     }
     return X;
 }
+//@laplace 
+matrix seasonal_lag_design(int T, int P, int s, vector y) {
+    int N = T - P * s;
+    matrix[N, P] X;
+
+    for (k in 1:P)
+        X[, k] = y[(P * s + 1 - k * s):(T - k * s)];
+
+    return X;
+}
 
 //@laplace
 //@brief Difference a time series d times
@@ -41,6 +51,22 @@ vector difference(vector y, int d) {
     return current[1:(T - d)];
 }
 
+//@laplace
+//@brief Seasonal differencing
+//@param vector y Observations
+//@param int s Seasonal period
+//@example vector y_s = ts::seasonal_difference(y, 12);
+//@return vector Seasonally differenced observations
+vector seasonal_difference(vector y, int s) {
+    int T = num_elements(y);
+    vector[T - s] result;
+
+    for (t in 1:(T - s))
+        result[t] = y[t + s] - y[t];
+
+    return result;
+}
+
 // Linear Mean Recursions =======================================================================================
 
 
@@ -49,11 +75,50 @@ vector difference(vector y, int d) {
 //@brief Autoregression primary for computing mu_t from AR p model
 //@param alpha Intercept
 //@param vector p with length of p. Partial Persistence
-//@param matrix X coming from a ts::lag_design function 
-//@example mu_t = ts::ar(alpha, phi, X);
+//@param matrix X_lag coming from a ts::lag_design function 
+//@example mu_t = ts::ar(alpha, phi, X_lag);
 //@return vector mu_t;
-vector ar(real alpha, vector phi, matrix X){
-    return alpha + X * phi;
+vector ar(real alpha, vector phi, matrix X_lag){
+    return alpha + X_lag * phi;
+}
+
+//@laplace
+//@brief Autoregression primary for computing mu_t from AR p model
+//@param alpha Intercept
+//@param matrix X Covariates 
+//@param vector beta 
+//@param vector p with length of p. Partial Persistence
+//@param matrix X_lag coming from a ts::lag_design function 
+//@example mu_t = ts::ar(alpha, phi, X_lag);
+//@return vector mu_t;
+vector ar(real alpha, vector phi, matrix X_lag, matrix X, vector beta){
+    return alpha + X_lag * phi + X * beta;
+}
+
+// Seasonal AR(p) Model SAR
+//@laplace 
+//@brief Seasonal Autoregression primary
+//@param vector phi with length of p. Partial Persistence
+//@param vector Phi
+//@param matrix x coming from a ts::lag_design function 
+//@param matrix X coming from a ts::seasonal_lag_design function
+//@example mu_t = ts::sar(alpha, phi, Phi , x, X);
+//@return vector mu_t;
+vector sar(real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, matrix X, vector beta){
+    return alpha + x_lag * phi + X_slag * Phi + X * beta;
+}
+
+// Seasonal AR(p) Model SAR
+//@laplace 
+//@brief Seasonal Autoregression primary
+//@param vector phi with length of p. Partial Persistence
+//@param vector Phi
+//@param matrix x coming from a ts::lag_design function 
+//@param matrix X coming from a ts::seasonal_lag_design function
+//@example mu_t = ts::sar(alpha, phi, Phi , x, X);
+//@return vector mu_t;
+vector sar(real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag){
+    return alpha + x_lag * phi + X_slag * Phi;
 }
 
 // Autoregression Log Pointwise distribution function
@@ -64,30 +129,46 @@ vector ar(real alpha, vector phi, matrix X){
 //@param matrix X coming from a ts::lag_design function 
 //@param vector y_obs with length N Computed as T - P
 //@param real sd
-real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X, real sd){
-    return normal_lpdf(y_obs | alpha + X * phi , sd);
-
+real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X_lag, real sd){
+    return normal_lpdf(y_obs | alpha + X_lag * phi, sd);
 }
+
+// Autoregression Log Pointwise distribution function
 //@laplace 
 //@brief Autoregression Model AR Log Pointwise distribution function
-//@param vector alpha Intercept
+//@param alpha Intercept
 //@param vector p with length of p. Partial Persistence
 //@param matrix X coming from a ts::lag_design function 
 //@param vector y_obs with length N Computed as T - P
 //@param real sd
-real ar_lpdf(vector y_obs, vector alpha, vector phi, matrix X, real sd){
-    return normal_lpdf(y_obs | alpha + X * phi , sd);
-
+real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X_lag, real sd, matrix X, vector beta){
+    return normal_lpdf(y_obs | alpha + X_lag * phi + X * beta, sd);
 }
+
+// SAR Log Pointwise Density Function 
 //@laplace 
-//@brief Autoregression Model AR Log Pointwise distribution function
-//@param vector alpha Intercept
-//@param vector p with length of p. Partial Persistence
-//@param matrix X coming from a ts::lag_design function 
-//@param vector y_obs with length N Computed as T - P
-//@param vector sd
-real ar_lpdf(vector y_obs, vector alpha, vector phi, matrix X, vector sd){
-    return normal_lpdf(y_obs | alpha + X * phi , sd);
+//@brief SAR Log Pointwise Density Function 
+//@param vector phi with length of p. Partial Persistence
+//@param vector Phi
+//@param matrix x coming from a ts::lag_design function 
+//@param matrix X coming from a ts::seasonal_lag_design function
+//@param real sigma
+//@param vector y_obs
+real sar_lpdf(vector y_obs, real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, real sigma, matrix X, vector beta){
+    return  normal_lpdf(y_obs | alpha + x_lag * phi + X_slag * Phi + X * beta, sigma);
+}
+
+// SAR Log Pointwise Density Function 
+//@laplace 
+//@brief SAR Log Pointwise Density Function 
+//@param vector phi with length of p. Partial Persistence
+//@param vector Phi
+//@param matrix x coming from a ts::lag_design function 
+//@param matrix X coming from a ts::seasonal_lag_design function
+//@param real sigma
+//@param vector y_obs
+real sar_lpdf(vector y_obs, real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, real sigma){
+    return  normal_lpdf(y_obs | alpha + x_lag * phi + X_slag * Phi, sigma);
 }
 
 // MA(q) Moving Average =========================================================================================
@@ -112,10 +193,101 @@ array[] vector ma(vector y, real alpha, vector theta){
             results[1][t] += theta[j] * results[2][t - j];
         }
 
-        results[2][t] += y[t] - results[1][t];
+        results[2][t] = y[t] - results[1][t];
     }
     return results;
 }
+
+// Moving Average Primary 
+//@laplace 
+//@brief MA q Moving Average 
+//@param real alpha
+//@param vector theta
+//@param vector y
+//@example mu_eps = ts::ma(y, alpha, theta, T);
+//@return Array of vectors in position array[1] is the mu_t and in array[2] is eps
+array[] vector ma(vector y, real alpha, vector theta, matrix X, vector beta){
+    int T = num_elements(y);
+    int q = num_elements(theta);
+    array[2] vector[T] results; // array[1] mu_t and array[2] eps
+
+    for(t in 1:T){
+        results[1][t] = alpha + X[t] * beta; 
+
+        for(j in 1:min(q, t - 1)){
+            results[1][t] += theta[j] * results[2][t - j];
+        }
+
+        results[2][t] = y[t] - results[1][t];
+    }
+    return results;
+}
+
+
+// Seasonal Moving Average Primary 
+//@laplace 
+//@brief Seasonal Moving Average primary  
+//@param real alpha
+//@param vector theta
+//@param vector Theta
+//@param vector y
+//@example results = ts::sma(y, alpha, theta, Theta);
+//@return Array of vectors in position array[1] is the mu_t and in array[2] is eps
+array[] vector sma(vector y, real alpha, vector theta, vector Theta, int s){
+    int T = num_elements(y);
+    int q = num_elements(theta);
+    int Q = num_elements(Theta);
+    
+    int N = T - s;
+    array[2] vector[N] results; // array[1] mu_t and array[2] eps
+    
+    for(t in 1:N){
+        results[1][t] = alpha; 
+
+        for(j in 1:min(q, t - 1)){
+            results[1][t] += theta[j] * results[2][t - j];
+        }
+        for(k in 1:min(Q, t - 1)){
+            results[1][t] += Theta[k] * results[2][t - k * s];
+        }
+
+        results[2][t] = y[t] - results[1][t];
+    }
+    return results;
+}
+
+// Seasonal Moving Average Primary 
+//@laplace 
+//@brief Seasonal Moving Average primary  
+//@param real alpha
+//@param vector theta
+//@param vector Theta
+//@param vector y
+//@example results = ts::sma(y, alpha, theta, Theta);
+//@return Array of vectors in position array[1] is the mu_t and in array[2] is eps
+array[] vector sma(vector y, real alpha, vector theta, vector Theta, int s, matrix X, vector beta){
+    int T = num_elements(y);
+    int q = num_elements(theta);
+    int Q = num_elements(Theta);
+    
+    int N = T - s;
+    array[2] vector[N] results; // array[1] mu_t and array[2] eps
+    
+    for(t in 1:N){
+        results[1][t] = alpha + X[t] * beta; 
+
+        for(j in 1:min(q, t - 1)){
+            results[1][t] += theta[j] * results[2][t - j];
+        }
+        for(k in 1:min(Q, t - 1)){
+            results[1][t] += Theta[k] * results[2][t - k * s];
+        }
+
+        results[2][t] = y[t] - results[1][t];
+    }
+    return results;
+}
+
 
 // Moving Average Log Pointwise Probability Function 
 //@laplace 
@@ -136,7 +308,95 @@ real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma){
         for(j in 1:min(q, t - 1)){
             mu_t[t] += theta[j] * eps[t - j];
         }
-        eps[t] += y_obs[t] - eps[t]; 
+        eps[t] = y_obs[t] - eps[t]; 
+    }
+    return normal_lpdf(y_obs | mu_t, sigma);
+}
+
+// Moving Average Log Pointwise Probability Function 
+//@laplace 
+//@brief Moving Average Log Pointwise Probability Function 
+//@param vector y_obs
+//@param real alpha
+//@param vector theta
+//@param real sigma
+real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma, matrix X, vector beta){
+    int T = num_elements(y_obs);
+    int q = num_elements(theta);
+    vector[T] mu_t;
+    vector[T] eps;
+
+    for(t in 1:T){
+        mu_t[t] = alpha + X[t] * beta;
+
+        for(j in 1:min(q, t - 1)){
+            mu_t[t] += theta[j] * eps[t - j];
+        }
+        eps[t] = y_obs[t] - eps[t]; 
+    }
+    return normal_lpdf(y_obs | mu_t, sigma);
+}
+
+// Seasonal Moving Average Log Pointwise Probability Function 
+//@laplace 
+//@brief Seasonal Moving Average Log Pointwise Probability Function 
+//@param vector y_obs
+//@param real alpha
+//@param vector theta
+//@param vector Theta
+//@param real sigma
+real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, int s){
+    int T = num_elements(y_obs);
+    int q = num_elements(theta);
+    int Q = num_elements(Theta);
+    
+    int N = T - s;
+    vector[N] mu_t;
+    vector[N] eps;
+    
+    for(t in 1:N){
+        mu_t[t] = alpha;
+
+        for(j in 1:min(q, t - 1)){
+            mu_t[t] += theta[j] * eps[t - j];
+        }
+
+        for(k in 1:min(Q, t -1) / s){
+            mu_t[t] += Theta[k] * eps[t - k * s];
+        }
+        eps[t] = y_obs[t] - eps[t]; 
+    }
+    return normal_lpdf(y_obs | mu_t, sigma);
+}
+
+// Seasonal Moving Average Log Pointwise Probability Function 
+//@laplace 
+//@brief Seasonal Moving Average Log Pointwise Probability Function 
+//@param vector y_obs
+//@param real alpha
+//@param vector theta
+//@param vector Theta
+//@param real sigma
+real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, int s, matrix X, vector beta){
+    int T = num_elements(y_obs);
+    int q = num_elements(theta);
+    int Q = num_elements(Theta);
+    
+    int N = T - s;
+    vector[N] mu_t;
+    vector[N] eps;
+    
+    for(t in 1:N){
+        mu_t[t] = alpha + X[t] * beta;
+
+        for(j in 1:min(q, t - 1)){
+            mu_t[t] += theta[j] * eps[t - j];
+        }
+
+        for(k in 1:min(Q, t -1) / s){
+            mu_t[t] += Theta[k] * eps[t - k * s];
+        }
+        eps[t] = y_obs[t] - eps[t]; 
     }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
@@ -157,8 +417,100 @@ array [] vector arma(vector y_obs, real alpha, vector phi, vector theta){
     array[2] vector[T] results; // array[1] mu_t , array[2] eps
 
     for(t in 1:T){
+        results[1][t] = alpha;
         for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * y_obs[t - i];
         for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        results[2][t] = y_obs[t] - results[1][t];
+    }
+    return results;
+}
+
+//@laplace 
+//@brief Autoregression Moving Average primary
+//@param real alpha
+//@param vector phi
+//@param vector theta 
+//@param vector y_obs
+//@example results = ts::arma(y_obs, alpha, p, q, phi, theta);
+//@return array of 2 where array[1] is mu_t and array[2] is eps
+array [] vector arma(vector y_obs, real alpha, vector phi, vector theta, matrix X, vector beta){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);
+    int q = num_elements(theta);
+    array[2] vector[T] results; // array[1] mu_t , array[2] eps
+
+    for(t in 1:T){
+        results[1][t] = alpha + X[t] * beta;
+        for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * y_obs[t - i];
+        for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        results[2][t] = y_obs[t] - results[1][t];
+    }
+    return results;
+}
+
+//@laplace 
+//@brief Seasonal Autoregression Moving Average primary
+//@param real alpha
+//@param vector phi
+//@param vector Phi
+//@param vector theta 
+//@param vector Theta
+//@param vector y_obs
+//@return array of 2 where array[1] is mu_t and array[2] is eps
+array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s){
+    int T = num_elements(y_obs); 
+    int p = num_elements(phi);   int P = num_elements(Phi);   
+    int q = num_elements(theta); int Q = num_elements(Theta);
+
+    int N = T - s;
+    array[2] vector[N] results; // array[1] mu_t , array[2] eps
+    
+    for(t in 1:N){
+        results[1][t] = alpha;
+        
+        // AR + SAR
+        for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * y_obs[t - i];
+        for(k in 1:min(P, t - 1) / s) results[1][t] += Phi[k]   * y_obs[t - k * s];
+
+        // MA + SMA
+        for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        for(n in 1:min(Q, t - 1) / s) results[1][t] += Theta[n] * results[2][t - n * s];
+
+        // Innovation 
+        results[2][t] = y_obs[t] - results[1][t];
+    }
+    return results;
+}
+
+//@laplace 
+//@brief Seasonal Autoregression Moving Average primary
+//@param real alpha
+//@param vector phi
+//@param vector Phi
+//@param vector theta 
+//@param vector Theta
+//@param vector y_obs
+//@return array of 2 where array[1] is mu_t and array[2] is eps
+array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, matrix X, vector beta){
+    int T = num_elements(y_obs); 
+    int p = num_elements(phi);   int P = num_elements(Phi);   
+    int q = num_elements(theta); int Q = num_elements(Theta);
+
+    int N = T - s;
+    array[2] vector[N] results; // array[1] mu_t , array[2] eps
+    
+    for(t in 1:N){
+        results[1][t] = alpha + X[t] * beta;
+        
+        // AR + SAR
+        for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * y_obs[t - i];
+        for(k in 1:min(P, t - 1) / s) results[1][t] += Phi[k]   * y_obs[t - k * s];
+
+        // MA + SMA
+        for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        for(n in 1:min(Q, t - 1) / s) results[1][t] += Theta[n] * results[2][t - n * s];
+
+        // Innovation 
         results[2][t] = y_obs[t] - results[1][t];
     }
     return results;
@@ -180,8 +532,102 @@ real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma){
     vector[T] eps;
 
     for(t in 1:T){
+        mu_t[t] = alpha;
         for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * y_obs[t - i];
         for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
+        eps[t] = y_obs[t] - mu_t[t];
+    }
+    return normal_lpdf(y_obs | mu_t, sigma);
+}
+
+// ARMA(p, q) Log Pointwise Density Function 
+//@laplace 
+//@brief ARMA Log Pointwise Density Function 
+//@param real alpha
+//@param vector phi
+//@param vector theta 
+//@param vector y_obs
+//@param real sigma
+real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma, matrix X, vector beta){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);
+    int q = num_elements(theta);
+
+    vector[T] mu_t;
+    vector[T] eps;
+
+    for(t in 1:T){
+        mu_t[t] = alpha + X[t] * beta;
+        for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * y_obs[t - i];
+        for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
+        eps[t] = y_obs[t] - mu_t[t];
+    }
+    return normal_lpdf(y_obs | mu_t, sigma);
+}
+
+//@laplace 
+//@brief SARMA Log Pointwise Density Function
+//@param real alpha
+//@param vector phi
+//@param vector Phi
+//@param vector theta 
+//@param vector Theta
+//@param vector y_obs
+//@return array of 2 where array[1] is mu_t and array[2] is eps
+real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, real sigma, int s){
+    int T = num_elements(y_obs); 
+    int p = num_elements(phi);   int P = num_elements(Phi);   
+    int q = num_elements(theta); int Q = num_elements(Theta);
+
+    int N = T - s;
+    vector[N] mu_t; 
+    vector[N] eps;
+
+    for(t in 1:N){
+        mu_t[t] = alpha;
+        // AR + SAR
+        for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * y_obs[t - i];
+        for(k in 1:min(P, t - 1) / s) mu_t[t] += Phi[k]   * y_obs[t - k * s];
+
+        // MA + SMA
+        for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
+        for(n in 1:min(Q, t - 1) / s) mu_t[t] += Theta[n] * eps[t - n * s];
+
+        // Innovation 
+        eps[t] = y_obs[t] - mu_t[t];
+    }
+    return normal_lpdf(y_obs | mu_t, sigma);
+}
+
+//@laplace 
+//@brief SARMA Log Pointwise Density Function
+//@param real alpha
+//@param vector phi
+//@param vector Phi
+//@param vector theta 
+//@param vector Theta
+//@param vector y_obs
+//@return array of 2 where array[1] is mu_t and array[2] is eps
+real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, real sigma, int s, matrix X, vector beta){
+    int T = num_elements(y_obs); 
+    int p = num_elements(phi);   int P = num_elements(Phi);   
+    int q = num_elements(theta); int Q = num_elements(Theta);
+
+    int N = T - s;
+    vector[N] mu_t; 
+    vector[N] eps;
+
+    for(t in 1:N){
+        mu_t[t] = alpha + X[t] * beta;
+        // AR + SAR
+        for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * y_obs[t - i];
+        for(k in 1:min(P, t - 1) / s) mu_t[t] += Phi[k]   * y_obs[t - k * s];
+
+        // MA + SMA
+        for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
+        for(n in 1:min(Q, t - 1) / s) mu_t[t] += Theta[n] * eps[t - n * s];
+
+        // Innovation 
         eps[t] = y_obs[t] - mu_t[t];
     }
     return normal_lpdf(y_obs | mu_t, sigma);
@@ -199,12 +645,115 @@ array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
-    array[2] vector[T - d] results; // array[1] mu_t , array[2] eps
-    vector[T - d] delta_y = difference(y_obs, d);
 
-    for(t in 1:T){
+    int N = T - d;
+    array[2] vector[N] results; // array[1] mu_t , array[2] eps
+    vector[N] delta_y = difference(y_obs, d);
+
+    for(t in 1:N){
+        results[1][t] = alpha;
         for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * delta_y[t - i];
         for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        results[2][t] = delta_y[t] - results[1][t];
+    }
+    return results;
+}
+
+//@laplace 
+//@brief Autoregression Moving Average Differencing primary
+//@param real alpha
+//@param int d
+//@param vector phi
+//@param vector theta 
+//@param vector y_obs
+array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta, matrix X, vector beta){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);
+    int q = num_elements(theta);
+
+    int N = T - d;
+    array[2] vector[N] results; // array[1] mu_t , array[2] eps
+    vector[N] delta_y = difference(y_obs, d);
+
+    for(t in 1:N){
+        results[1][t] = alpha + X[t] * beta;
+        for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * delta_y[t - i];
+        for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        results[2][t] = delta_y[t] - results[1][t];
+    }
+    return results;
+}
+
+//@laplace
+//@brief Seasonal Autoregression Moving Average Differencing primary
+//@param real alpha
+//@param vector phi Ordinary AR coefficients
+//@param vector Phi Seasonal AR coefficients
+//@param vector theta Ordinary MA coefficients
+//@param vector Theta Seasonal MA coefficients
+//@param vector y_obs Observations
+//@param int s Seasonal period
+//@return Array of vectors: [1] mu_t, [2] eps
+array[] vector sarima(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);   int P = num_elements(Phi);
+    int q = num_elements(theta); int Q = num_elements(Theta);
+
+    int N = T - s;
+    vector[N] delta_y = seasonal_difference(y_obs, s);
+    array[2] vector[N] results;
+   
+
+    for (t in 1:N) {
+        results[1][t] = alpha;
+
+        // AR
+        for (i in 1:min(p, t - 1))       results[1][t] += phi[i]   * delta_y[t - i];
+        // Seasonal AR
+        for (i in 1:min(P, (t - 1) / s)) results[1][t] += Phi[i]   * delta_y[t - i * s];
+        // MA
+        for (i in 1:min(q, t - 1))       results[1][t] += theta[i] * results[2][t - i];
+        // Seasonal MA
+        for (i in 1:min(Q, (t - 1) / s)) results[1][t] += Theta[i] * results[2][t - i * s];
+
+        // Innovation
+        results[2][t] = delta_y[t] - results[1][t];
+    }
+    return results;
+}
+
+//@laplace
+//@brief Seasonal Autoregression Moving Average Differencing primary
+//@param real alpha
+//@param vector phi Ordinary AR coefficients
+//@param vector Phi Seasonal AR coefficients
+//@param vector theta Ordinary MA coefficients
+//@param vector Theta Seasonal MA coefficients
+//@param vector y_obs Observations
+//@param int s Seasonal period
+//@return Array of vectors: [1] mu_t, [2] eps
+array[] vector sarima(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, matrix X, vector beta){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);   int P = num_elements(Phi);
+    int q = num_elements(theta); int Q = num_elements(Theta);
+
+    vector[T - s] delta_y = seasonal_difference(y_obs, s);
+    array[2] vector[T - s] results;
+    int N = T - s;
+
+    for (t in 1:N) {
+        results[1][t] = alpha + X[t] * beta;
+
+        // AR
+        for (i in 1:min(p, t - 1))       results[1][t] += phi[i]   * delta_y[t - i];
+        // Seasonal AR
+        for (i in 1:min(P, (t - 1) / s)) results[1][t] += Phi[i]   * delta_y[t - i * s];
+        // MA
+        for (i in 1:min(q, t - 1))       results[1][t] += theta[i] * results[2][t - i];
+        // Seasonal MA
+        for (i in 1:min(Q, (t - 1) / s)) results[1][t] += Theta[i] * results[2][t - i * s];
+
+        // Innovation
         results[2][t] = delta_y[t] - results[1][t];
     }
     return results;
@@ -222,15 +771,123 @@ real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real 
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
-    
-    vector[T - d] mu_t;
-    vector[T - d] eps;
-    vector[T - d] delta_y = difference(y_obs, d);
 
-    for(t in 1:T){
+    int N = T - d;
+    vector[N] mu_t;
+    vector[N] eps;
+    vector[N] delta_y = difference(y_obs, d);
+
+    for(t in 1:N){
+        mu_t[t] = alpha;
         for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * delta_y[t - i];
         for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
         eps[t] = delta_y[t] - mu_t[t];
     }
     return normal_lpdf(delta_y | mu_t, sigma);
 }
+
+//@laplace 
+//@brief ARIMA Log Pointwise Density Function
+//@param real alpha
+//@param int d
+//@param vector phi
+//@param vector theta 
+//@param vector y_obs
+//@param real sigma
+real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real sigma, matrix X, vector beta){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);
+    int q = num_elements(theta);
+    
+    int N = T - d;
+    vector[N] mu_t;
+    vector[N] eps;
+    vector[N] delta_y = difference(y_obs, d);
+
+    for(t in 1:N){
+        mu_t[t] = alpha + X[t] * beta;
+        for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * delta_y[t - i];
+        for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
+        eps[t] = delta_y[t] - mu_t[t];
+    }
+    return normal_lpdf(delta_y | mu_t, sigma);
+}
+
+
+//@laplace
+//@brief SARIMA Log Pointwise Density Function 
+//@param real alpha
+//@param vector phi Ordinary AR coefficients
+//@param vector Phi Seasonal AR coefficients
+//@param vector theta Ordinary MA coefficients
+//@param vector Theta Seasonal MA coefficients
+//@param vector y_obs Observations
+//@param int s Seasonal period
+//@param real sigma
+//@return Array of vectors: [1] mu_t, [2] eps
+real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, real sigma){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);   int P = num_elements(Phi);
+    int q = num_elements(theta); int Q = num_elements(Theta);
+
+    int N = T - s;
+    vector[N] delta_y = seasonal_difference(y_obs, s);
+    vector[N] mu_t;
+    vector[N] eps;
+
+    for (t in 1:N) {
+        mu_t[t] = alpha;
+        // AR
+        for (i in 1:min(p, t - 1))       mu_t[t] += phi[i]   * delta_y[t - i];
+        // Seasonal AR
+        for (i in 1:min(P, (t - 1) / s)) mu_t[t] += Phi[i]   * delta_y[t - i * s];
+        // MA
+        for (i in 1:min(q, t - 1))       mu_t[t] += theta[i] * eps[t - i];
+        // Seasonal MA
+        for (i in 1:min(Q, (t - 1) / s)) mu_t[t] += Theta[i] * eps[t - i * s];
+
+        // Innovation
+        eps[t] = delta_y[t] - mu_t[t];
+    }
+    return normal_lpdf(delta_y | mu_t, sigma);
+}
+
+//@laplace
+//@brief SARIMA Log Pointwise Density Function 
+//@param real alpha
+//@param vector phi Ordinary AR coefficients
+//@param vector Phi Seasonal AR coefficients
+//@param vector theta Ordinary MA coefficients
+//@param vector Theta Seasonal MA coefficients
+//@param vector y_obs Observations
+//@param int s Seasonal period
+//@param real sigma
+//@return Array of vectors: [1] mu_t, [2] eps
+real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, real sigma, matrix X, vector beta){
+    int T = num_elements(y_obs);
+    int p = num_elements(phi);   int P = num_elements(Phi);
+    int q = num_elements(theta); int Q = num_elements(Theta);
+
+    int N = T - s;
+    vector[N] delta_y = seasonal_difference(y_obs, s);
+    vector[N] mu_t;
+    vector[N] eps;
+  
+    for (t in 1:N) {
+        mu_t[t] = alpha + X[t] * beta;
+
+        // AR
+        for (i in 1:min(p, t - 1))       mu_t[t] += phi[i]   * delta_y[t - i];
+        // Seasonal AR
+        for (i in 1:min(P, (t - 1) / s)) mu_t[t] += Phi[i]   * delta_y[t - i * s];
+        // MA
+        for (i in 1:min(q, t - 1))       mu_t[t] += theta[i] * eps[t - i];
+        // Seasonal MA
+        for (i in 1:min(Q, (t - 1) / s)) mu_t[t] += Theta[i] * eps[t - i * s];
+
+        // Innovation
+        eps[t] = delta_y[t] - mu_t[t];
+    }
+    return normal_lpdf(delta_y | mu_t, sigma);
+}
+
