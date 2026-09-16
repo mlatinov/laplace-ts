@@ -503,11 +503,11 @@ array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector t
         results[1][t] = alpha + X[t] * beta;
         
         // AR + SAR
-        for(i in 1:min(p, t - 1)) results[1][t] += phi[i]   * y_obs[t - i];
+        for(i in 1:min(p, t - 1)) results[1][t] += phi[i]       * y_obs[t - i];
         for(k in 1:min(P, t - 1) / s) results[1][t] += Phi[k]   * y_obs[t - k * s];
 
         // MA + SMA
-        for(j in 1:min(q, t - 1)) results[1][t] += theta[j] * results[2][t -j];
+        for(j in 1:min(q, t - 1)) results[1][t] += theta[j]     * results[2][t -j];
         for(n in 1:min(Q, t - 1) / s) results[1][t] += Theta[n] * results[2][t - n * s];
 
         // Innovation 
@@ -1032,4 +1032,256 @@ real exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real
         st[t + m] = gamma * (y_obs[t] - lt[t + 1])+ (1 - gamma) * st[t];
     }
     return normal_lpdf(y_obs | y_hat, sd);
+}
+
+//@laplace
+//@brief GARCH conditional standard deviations
+//@param real omega  variance floor, omega > 0. NOT the long-run variance.
+//@param real alpha  reactivity, alpha >= 0
+//@param real beta   persistence, beta >= 0, with alpha + beta < 1
+//@param vector y_obs
+//@param vector mu;
+vector garch(vector y_obs, real omega, real alpha, real beta, vector mu){
+    int N = size(y_obs);
+    vector[N] sd2;
+    vector[N] eps;
+
+    // stationary initialisation
+    sd2[1] = omega / (1 - alpha - beta);
+    eps   = y_obs - mu; 
+
+    for(t in 2:N){
+        sd2[t]  = omega + alpha * square(eps[t - 1]) + beta * square(sd2[t - 1]);
+    }
+    return sqrt(sd2);
+}
+
+//@laplace
+//@brief GARCH Log Pointwise Density Function 
+//@param real omega  variance floor, omega > 0. NOT the long-run variance.
+//@param real alpha  reactivity, alpha >= 0
+//@param real beta   persistence, beta >= 0, with alpha + beta < 1
+//@param vector y_obs
+//@param vector mu;
+real garch_lpdf(vector y_obs, real omega, real alpha, real beta, vector mu){
+    int N = size(y_obs);
+    vector[N] sd2;
+    vector[N] eps;
+
+    // stationary initialisation
+    sd2[1] = omega / (1 - alpha - beta);
+    eps   = y_obs - mu; 
+
+    for(t in 2:N){
+        sd2[t]  = omega + alpha * square(eps[t - 1]) + beta * square(sd2[t - 1]);
+    }
+    return normal_lpdf(y_obs | mu, sqrt(sd2));
+}
+
+//@laplace
+//@brief Smooth transition AR (STAR). Returns mu for t = L+1..N, L = max(p, d).
+//@param real alpha1, alpha2  regime intercepts
+//@param vector phi1, phi2    regime AR coefficients, both length p
+//@param real c               threshold location, on the scale of y
+//@param real kappa           transition sharpness, > 0, dimensionless
+//@param int d                delay, >= 1. DATA, never a parameter.
+//@param real scale           spread of y; makes kappa dimensionless
+vector star(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale){
+    int N = size(y_obs);
+    int p = size(phi1);
+    int L = max(p, d);
+    vector[N - L] mu;
+
+    for (t in (L + 1):N) {
+        real G  = inv_logit(kappa * (y_obs[t - d] - c) / scale);
+        real m1 = alpha1;
+        real m2 = alpha2;
+        for (j in 1:p) {
+            m1 += phi1[j] * y_obs[t - j];
+            m2 += phi2[j] * y_obs[t - j];
+        }
+        mu[t - L] = (1 - G) * m1 + G * m2;
+    }
+    return mu;
+}
+
+//@laplace
+//@brief Smooth transition AR (STAR)
+//@param real alpha1, alpha2  regime intercepts
+//@param vector phi1, phi2    regime AR coefficients, both length p
+//@param real c               threshold location, on the scale of y
+//@param real kappa           transition sharpness, > 0, dimensionless
+//@param int d                delay, >= 1. DATA, never a parameter.
+//@param real scale           spread of y; makes kappa dimensionless
+vector star(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, matrix X, vector beta){
+    int N = size(y_obs);
+    int p = size(phi1);
+    int L = max(p, d);
+    vector[N - L] mu;
+
+    for (t in (L + 1):N) {
+        real G  = inv_logit(kappa * (y_obs[t - d] - c) / scale);
+        real m1 = alpha1;
+        real m2 = alpha2;
+        for (j in 1:p) {
+            m1 += phi1[j] * y_obs[t - j];
+            m2 += phi2[j] * y_obs[t - j];
+        }
+        mu[t - L] = (1 - G) * m1 + G * m2 + X[t] * beta;
+    }
+    return mu;
+}
+
+//@laplace
+//@brief Smooth transition AR (STAR) Log Pointwise Density Function
+//@param real alpha1, alpha2  regime intercepts
+//@param vector phi1, phi2    regime AR coefficients, both length p
+//@param real c               threshold location, on the scale of y
+//@param real kappa           transition sharpness, > 0, dimensionless
+//@param int d                delay, >= 1. DATA, never a parameter.
+//@param real scale           spread of y; makes kappa dimensionless
+real star_lpdf(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma){
+    int N = size(y_obs);
+    int p = size(phi1);
+    int L = max(p, d);
+    vector[N - L] mu;
+
+    for (t in (L + 1):N) {
+        real G  = inv_logit(kappa * (y_obs[t - d] - c) / scale);
+        real m1 = alpha1;
+        real m2 = alpha2;
+        for (j in 1:p) {
+            m1 += phi1[j] * y_obs[t - j];
+            m2 += phi2[j] * y_obs[t - j];
+        }
+        mu[t - L] = (1 - G) * m1 + G * m2;
+    }
+    return normal_lpdf(y_obs | mu, sigma);
+}
+
+//@laplace
+//@brief Smooth transition AR (STAR)
+//@param real alpha1, alpha2  regime intercepts
+//@param vector phi1, phi2    regime AR coefficients, both length p
+//@param real c               threshold location, on the scale of y
+//@param real kappa           transition sharpness, > 0, dimensionless
+//@param int d                delay, >= 1. DATA, never a parameter.
+//@param real scale           spread of y; makes kappa dimensionless
+real star_lpdf(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, matrix X, vector beta, real sigma){
+    int N = size(y_obs);
+    int p = size(phi1);
+    int L = max(p, d);
+    vector[N - L] mu;
+
+    for (t in (L + 1):N) {
+        real G  = inv_logit(kappa * (y_obs[t - d] - c) / scale);
+        real m1 = alpha1;
+        real m2 = alpha2;
+        for (j in 1:p) {
+            m1 += phi1[j] * y_obs[t - j];
+            m2 += phi2[j] * y_obs[t - j];
+        }
+        mu[t - L] = (1 - G) * m1 + G * m2 + X[t] * beta;
+    }
+    return normal_lpdf(y_obs | mu, sigma);
+}
+
+//@laplace 
+//@brief Log-linear INGARCH / count autoregression
+//@param vector alpha
+//@param vector beta
+//@param array[] int y_obs
+//@param real omega
+vector ingarch(array[] int y_obs, vector beta, vector alpha, real omega){
+    int N = size(y_obs);
+    int P = num_elements(alpha);
+    int Q = num_elements(beta);
+    vector[N] lambda_t;
+
+    for(t in 1:N){
+        // Initialize
+        real eta_t = omega;
+        // Observation lags
+        for (p in 1:min(P, t - 1)) eta_t += alpha[p] * log1p(y_obs[t - p]);
+        // Intensity lags
+        for(q in 1:min(Q, t - 1))  eta_t += beta[q] * log(lambda_t[t - q]);
+        // Accumulate 
+        lambda_t[t] = exp(eta_t);
+    }
+    return lambda_t;  
+}
+
+//@laplace 
+//@brief Log-linear INGARCH / count autoregression
+//@param vector alpha
+//@param vector beta
+//@param array[] int y_obs
+//@param real omega
+vector ingarch(array[] int y_obs, vector beta, vector alpha, real omega, matrix X, vector beta_c){
+    int N = size(y_obs);
+    int P = num_elements(alpha);
+    int Q = num_elements(beta);
+    vector[N] lambda_t;
+
+    for(t in 1:N){
+        // Initialize
+        real eta_t = omega;
+        // Observation lags
+        for (p in 1:min(P, t - 1)) eta_t += alpha[p] * log1p(y_obs[t - p]);
+        // Intensity lags
+        for(q in 1:min(Q, t - 1))  eta_t += beta[q] * log(lambda_t[t - q]);
+        // Accumulate 
+        lambda_t[t] = exp(eta_t) + X[t] * beta_c;
+    }
+    return lambda_t;  
+}
+
+//@laplace 
+//@brief Log-linear INGARCH / count autoregression Log Pointwise Mass Function 
+//@param vector alpha
+//@param vector beta
+//@param array[] int y_obs
+//@param real omega
+real ingarch_lpmf(array[] int y_obs, vector beta, vector alpha, real omega){
+    int N = size(y_obs);
+    int P = num_elements(alpha);
+    int Q = num_elements(beta);
+    vector[N] lambda_t;
+
+    for(t in 1:N){
+        // Initialize
+        real eta_t = omega;
+        // Observation lags
+        for (p in 1:min(P, t - 1)) eta_t += alpha[p] * log1p(y_obs[t - p]);
+        // Intensity lags
+        for(q in 1:min(Q, t - 1))  eta_t += beta[q] * log(lambda_t[t - q]);
+        // Accumulate 
+        lambda_t[t] = exp(eta_t);
+    }
+    return poisson_lpmf(y_obs | lambda_t);  
+}
+
+//@laplace 
+//@brief Log-linear INGARCH / count autoregression
+//@param vector alpha
+//@param vector beta
+//@param array[] int y_obs
+//@param real omega
+real ingarch_lpmf(array[] int y_obs, vector beta, vector alpha, real omega, matrix X, vector beta_c){
+    int N = size(y_obs);
+    int P = num_elements(alpha);
+    int Q = num_elements(beta);
+    vector[N] lambda_t;
+
+    for(t in 1:N){
+        // Initialize
+        real eta_t = omega;
+        // Observation lags
+        for (p in 1:min(P, t - 1)) eta_t += alpha[p] * log1p(y_obs[t - p]);
+        // Intensity lags
+        for(q in 1:min(Q, t - 1))  eta_t += beta[q] * log(lambda_t[t - q]);
+        // Accumulate 
+        lambda_t[t] = exp(eta_t) + X[t] * beta_c;
+    }
+    return poisson_lpmf(y_obs | lambda_t);  
 }
