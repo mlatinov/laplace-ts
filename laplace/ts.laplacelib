@@ -3,7 +3,9 @@
 //
 // Conventions used throughout this file:
 //   * Conditional likelihood only. The first observations are conditioned on, never modelled.
-//     Stationarity / invertibility are NOT enforced; put priors on phi and theta instead.
+//     Stationarity / invertibility are NOT enforced by the densities. For any model with MA terms, declare
+//     partial autocorrelations and map them with ma_theta_from_pacf (and ar_phi_from_pacf for AR terms):
+//     an unconstrained theta lets the residual recursion diverge and sampling stalls.
 //   * `_lpdf` / `_lpmf`  score an observed series.
 //   * `_rng`             simulate a fresh series from explicit seed values (prior predictive, SBC).
 //   * `_forecast_rng`    continue an observed series H steps ahead.
@@ -194,6 +196,46 @@ vector unseasonal_difference(vector y_obs, vector delta_f, int s, int D){
         current = full[(n + 1):(n + H)];
     }
     return current;
+}
+
+// Stationarity / invertibility through partial autocorrelations ----------------------------------------------
+// The _lpdf functions below take phi / theta as plain vectors and do not constrain them. For MA terms that
+// matters: outside the invertible region the residual recursion eps[t] = y[t] - mu[t] grows geometrically
+// and sampling from default inits gets stuck. Declaring the partial autocorrelations and mapping them with
+// these two functions restricts phi / theta to exactly the stationary / invertible region.
+
+//@laplace
+//@brief Stationary AR coefficients from partial autocorrelations (Durbin-Levinson / Monahan 1984).
+//@param r Partial autocorrelations, each strictly inside (-1, 1); declare `vector<lower=-1, upper=1>[p] r`.
+//@return vector[p] phi for which the AR(p) recursion y_t = alpha + sum_j phi_j y_{t-j} + e_t is stationary. Every stationary phi comes from exactly one r, so nothing admissible is excluded. For p = 1, phi = r.
+//@math \phi^{(k)}_k = r_k, \qquad \phi^{(k)}_j = \phi^{(k-1)}_j - r_k\,\phi^{(k-1)}_{k-j} \ (j < k), \qquad \phi = \phi^{(p)}
+//@example parameters { vector<lower=-1, upper=1>[2] r; }
+//transformed parameters { vector[2] phi = ts::ar_phi_from_pacf(r); }
+vector ar_phi_from_pacf(vector r){
+    int p = num_elements(r);
+    vector[p] phi = rep_vector(0, p);
+    vector[p] prev;
+
+    for (k in 1:p) {
+        prev = phi;
+        phi[k] = r[k];
+        for (j in 1:(k - 1)) {
+            phi[j] = prev[j] - r[k] * prev[k - j];
+        }
+    }
+    return phi;
+}
+
+//@laplace
+//@brief Invertible MA coefficients from partial autocorrelations -- the recommended way to parameterise theta.
+//@param r Partial autocorrelations, each strictly inside (-1, 1); declare `vector<lower=-1, upper=1>[q] r`.
+//@return vector[q] theta for which the MA(q) term used by ma_lpdf, arma_lpdf, arima_lpdf (mu_t = alpha + sum_j theta_j eps_{t-j}) is invertible, i.e. 1 + theta_1 z + ... + theta_q z^q has every root outside the unit circle. Every invertible theta comes from exactly one r. For q = 1, theta = r. For seasonal models map theta and Theta separately: the product of two invertible polynomials is invertible.
+//@math \theta = -\,\phi(-r), \quad \text{where } \phi(\cdot) \text{ is ar\_phi\_from\_pacf}
+//@example parameters { real alpha; vector<lower=-1, upper=1>[2] r; real<lower=0> sigma; }
+//transformed parameters { vector[2] theta = ts::ma_theta_from_pacf(r); }
+//model { target += ts::ma_lpdf(y | alpha, theta, sigma); }
+vector ma_theta_from_pacf(vector r){
+    return -ar_phi_from_pacf(-r);
 }
 
 // Linear Mean Recursions =======================================================================================
@@ -584,6 +626,10 @@ real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma){
         }
         eps[t] = y_obs[t] - mu_t[t];
     }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::ma_lpdf: the residual recursion diverged -- theta lies outside the invertible region. ",
+               "Parameterise it through ts::ma_theta_from_pacf (see its documentation).");
+    }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
 
@@ -609,6 +655,10 @@ real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma, matrix X, vecto
             mu_t[t] += theta[j] * eps[t - j];
         }
         eps[t] = y_obs[t] - mu_t[t];
+    }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::ma_lpdf: the residual recursion diverged -- theta lies outside the invertible region. ",
+               "Parameterise it through ts::ma_theta_from_pacf (see its documentation).");
     }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
@@ -644,6 +694,10 @@ real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, 
         }
         eps[t] = y_obs[t] - mu_t[t];
     }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::sma_lpdf: the residual recursion diverged -- theta/Theta lie outside the invertible region. ",
+               "Parameterise them through ts::ma_theta_from_pacf (see its documentation).");
+    }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
 
@@ -677,6 +731,10 @@ real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, 
             mu_t[t] += Theta[k] * eps[t - k * s];
         }
         eps[t] = y_obs[t] - mu_t[t];
+    }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::sma_lpdf: the residual recursion diverged -- theta/Theta lie outside the invertible region. ",
+               "Parameterise them through ts::ma_theta_from_pacf (see its documentation).");
     }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
@@ -936,6 +994,10 @@ real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma){
         for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
         eps[t] = y_obs[t] - mu_t[t];
     }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::arma_lpdf: the residual recursion diverged -- theta lies outside the invertible region. ",
+               "Parameterise it through ts::ma_theta_from_pacf (see its documentation).");
+    }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
 
@@ -962,6 +1024,10 @@ real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma, m
         for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * y_obs[t - i];
         for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
         eps[t] = y_obs[t] - mu_t[t];
+    }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::arma_lpdf: the residual recursion diverged -- theta lies outside the invertible region. ",
+               "Parameterise it through ts::ma_theta_from_pacf (see its documentation).");
     }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
@@ -999,6 +1065,10 @@ real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, 
         // Innovation
         eps[t] = y_obs[t] - mu_t[t];
     }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::sarma_lpdf: the residual recursion diverged -- theta/Theta lie outside the invertible region. ",
+               "Parameterise them through ts::ma_theta_from_pacf (see its documentation).");
+    }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
 
@@ -1034,6 +1104,10 @@ real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, 
 
         // Innovation
         eps[t] = y_obs[t] - mu_t[t];
+    }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::sarma_lpdf: the residual recursion diverged -- theta/Theta lie outside the invertible region. ",
+               "Parameterise them through ts::ma_theta_from_pacf (see its documentation).");
     }
     return normal_lpdf(y_obs | mu_t, sigma);
 }
@@ -1372,6 +1446,10 @@ real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real 
         for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
         eps[t] = delta_y[t] - mu_t[t];
     }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::arima_lpdf: the residual recursion diverged -- theta lies outside the invertible region. ",
+               "Parameterise it through ts::ma_theta_from_pacf (see its documentation).");
+    }
     return normal_lpdf(delta_y | mu_t, sigma);
 }
 
@@ -1402,6 +1480,10 @@ real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real 
         for(i in 1:min(p, t - 1)) mu_t[t] += phi[i]   * delta_y[t - i];
         for(j in 1:min(q, t - 1)) mu_t[t] += theta[j] * eps[t -j];
         eps[t] = delta_y[t] - mu_t[t];
+    }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::arima_lpdf: the residual recursion diverged -- theta lies outside the invertible region. ",
+               "Parameterise it through ts::ma_theta_from_pacf (see its documentation).");
     }
     return normal_lpdf(delta_y | mu_t, sigma);
 }
@@ -1443,6 +1525,10 @@ real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta,
 
         // Innovation
         eps[t] = delta_y[t] - mu_t[t];
+    }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::sarima_lpdf: the residual recursion diverged -- theta/Theta lie outside the invertible region. ",
+               "Parameterise them through ts::ma_theta_from_pacf (see its documentation).");
     }
     return normal_lpdf(delta_y | mu_t, sigma);
 }
@@ -1487,6 +1573,10 @@ real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta,
 
         // Innovation
         eps[t] = delta_y[t] - mu_t[t];
+    }
+    if (is_inf(sum(mu_t)) || is_nan(sum(mu_t))) {
+        reject("ts::sarima_lpdf: the residual recursion diverged -- theta/Theta lie outside the invertible region. ",
+               "Parameterise them through ts::ma_theta_from_pacf (see its documentation).");
     }
     return normal_lpdf(delta_y | mu_t, sigma);
 }
