@@ -1,0 +1,4 @@
+[dependencies.ts]
+git = "https://github.com/mlatinov/laplace-ts"
+tag = "0.1.0"
+subdir = "laplace"
