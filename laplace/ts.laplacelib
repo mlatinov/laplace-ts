@@ -21,7 +21,7 @@
 //@example matrix X = ts::lag_design(10, y);
 //@math X[n, i] = y_{p + n - i}, \quad n = 1,\dots,T-p, \quad i = 1,\dots,p
 //@return matrix[T - p, p] X. Row n holds y_{t-1},\dots,y_{t-p} for t = p + n.
-matrix lag_design(int p, vector y){
+pub matrix lag_design(int p, vector y){
     int T = num_elements(y);
     int N = T - p;
     matrix[N, p] X;
@@ -40,7 +40,7 @@ matrix lag_design(int p, vector y){
 //@example matrix X = ts::lag_design(2, y, max(2, 1 * 12));
 //@math X[n, i] = y_{L + n - i}, \quad n = 1,\dots,T-L
 //@return matrix[T - L, p] X
-matrix lag_design(int p, vector y, int L){
+pub matrix lag_design(int p, vector y, int L){
     int T = num_elements(y);
     int N = T - L;
     matrix[N, p] X;
@@ -59,7 +59,7 @@ matrix lag_design(int p, vector y, int L){
 //@example matrix X = ts::seasonal_lag_design(1, 12, y);
 //@math X[n, k] = y_{Ps + n - ks}, \quad n = 1,\dots,T-Ps, \quad k = 1,\dots,P
 //@return matrix[T - P*s, P] X
-matrix seasonal_lag_design(int P, int s, vector y) {
+pub matrix seasonal_lag_design(int P, int s, vector y) {
     int T = num_elements(y);
     int N = T - P * s;
     matrix[N, P] X;
@@ -79,7 +79,7 @@ matrix seasonal_lag_design(int P, int s, vector y) {
 //@example matrix X = ts::seasonal_lag_design(1, 12, y, max(2, 12));
 //@math X[n, k] = y_{L + n - ks}, \quad n = 1,\dots,T-L
 //@return matrix[T - L, P] X
-matrix seasonal_lag_design(int P, int s, vector y, int L) {
+pub matrix seasonal_lag_design(int P, int s, vector y, int L) {
     int T = num_elements(y);
     int N = T - L;
     matrix[N, P] X;
@@ -96,7 +96,7 @@ matrix seasonal_lag_design(int P, int s, vector y, int L) {
 //@param int d
 //@math \nabla^d y_t = \nabla^{d-1} y_t - \nabla^{d-1} y_{t-1}, \quad \nabla^0 y = y
 //@return vector[T-d]
-vector difference(vector y, int d) {
+pub vector difference(vector y, int d) {
     int T = num_elements(y);
     vector[T] current = y;
     vector[T] next;
@@ -120,7 +120,7 @@ vector difference(vector y, int d) {
 //@example vector y_s = ts::seasonal_difference(y, 12);
 //@math \nabla_s y_t = y_t - y_{t-s}
 //@return vector Seasonally differenced observations
-vector seasonal_difference(vector y, int s) {
+pub vector seasonal_difference(vector y, int s) {
     int T = num_elements(y);
     vector[T - s] result;
 
@@ -138,7 +138,7 @@ vector seasonal_difference(vector y, int s) {
 //@example vector y_s = ts::seasonal_difference(y, 12, 1);
 //@math \nabla_s^D y_t
 //@return vector[T - D*s] Seasonally differenced observations
-vector seasonal_difference(vector y, int s, int D) {
+pub vector seasonal_difference(vector y, int s, int D) {
     int T = num_elements(y);
     vector[T] current = y;
 
@@ -158,7 +158,7 @@ vector seasonal_difference(vector y, int s, int D) {
 //@example vector y_f = ts::undifference(y, delta_f, 1);
 //@math y_{T+h} = y_{T+h-1} + \nabla y_{T+h}, applied d times, anchored at \nabla^{k} y_T
 //@return vector[H] Forecast on the level scale
-vector undifference(vector y_obs, vector delta_f, int d){
+pub vector undifference(vector y_obs, vector delta_f, int d){
     int H = num_elements(delta_f);
     vector[H] current = delta_f;
 
@@ -180,7 +180,7 @@ vector undifference(vector y_obs, vector delta_f, int d){
 //@example vector y_f = ts::unseasonal_difference(y, delta_f, 12, 1);
 //@math y_{T+h} = y_{T+h-s} + \nabla_s y_{T+h}, applied D times
 //@return vector[H] Forecast on the level scale
-vector unseasonal_difference(vector y_obs, vector delta_f, int s, int D){
+pub vector unseasonal_difference(vector y_obs, vector delta_f, int s, int D){
     int T = num_elements(y_obs);
     int H = num_elements(delta_f);
     vector[H] current = delta_f;
@@ -211,7 +211,7 @@ vector unseasonal_difference(vector y_obs, vector delta_f, int s, int D){
 //@math \phi^{(k)}_k = r_k, \qquad \phi^{(k)}_j = \phi^{(k-1)}_j - r_k\,\phi^{(k-1)}_{k-j} \ (j < k), \qquad \phi = \phi^{(p)}
 //@example parameters { vector<lower=-1, upper=1>[2] r; }
 //transformed parameters { vector[2] phi = ts::ar_phi_from_pacf(r); }
-vector ar_phi_from_pacf(vector r){
+pub vector ar_phi_from_pacf(vector r){
     int p = num_elements(r);
     vector[p] phi = rep_vector(0, p);
     vector[p] prev;
@@ -234,7 +234,7 @@ vector ar_phi_from_pacf(vector r){
 //@example parameters { real alpha; vector<lower=-1, upper=1>[2] r; real<lower=0> sigma; }
 //transformed parameters { vector[2] theta = ts::ma_theta_from_pacf(r); }
 //model { target += ts::ma_lpdf(y | alpha, theta, sigma); }
-vector ma_theta_from_pacf(vector r){
+pub vector ma_theta_from_pacf(vector r){
     return -ar_phi_from_pacf(-r);
 }
 
@@ -250,7 +250,7 @@ vector ma_theta_from_pacf(vector r){
 //@example mu_t = ts::ar(alpha, phi, X_lag);
 //@math \mu_t = \alpha + \sum_{i=1}^{p} \phi_i y_{t-i}
 //@return vector[rows(X_lag)] mu_t
-vector ar(real alpha, vector phi, matrix X_lag){
+pub vector ar(real alpha, vector phi, matrix X_lag){
     return alpha + X_lag * phi;
 }
 
@@ -264,7 +264,7 @@ vector ar(real alpha, vector phi, matrix X_lag){
 //@example mu_t = ts::ar(alpha, phi, X_lag, X, beta);
 //@math \mu_t = \alpha + \sum_{i=1}^{p} \phi_i y_{t-i} + x_t^\top \beta
 //@return vector[rows(X_lag)] mu_t
-vector ar(real alpha, vector phi, matrix X_lag, matrix X, vector beta){
+pub vector ar(real alpha, vector phi, matrix X_lag, matrix X, vector beta){
     return alpha + X_lag * phi + X * beta;
 }
 
@@ -278,7 +278,7 @@ vector ar(real alpha, vector phi, matrix X_lag, matrix X, vector beta){
 //@example mu_t = ts::sar(alpha, phi, Phi, x_lag, X_slag, X, beta);
 //@math \mu_t = \alpha + \sum_{i=1}^{p} \phi_i y_{t-i} + \sum_{k=1}^{P} \Phi_k y_{t-ks} + x_t^\top \beta
 //@return vector[rows(x_lag)] mu_t. Both design matrices MUST be built with the same offset L = max(p, P*s).
-vector sar(real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, matrix X, vector beta){
+pub vector sar(real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, matrix X, vector beta){
     return alpha + x_lag * phi + X_slag * Phi + X * beta;
 }
 
@@ -292,7 +292,7 @@ vector sar(real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, matr
 //@example mu_t = ts::sar(alpha, phi, Phi, x_lag, X_slag);
 //@math \mu_t = \alpha + \sum_{i=1}^{p} \phi_i y_{t-i} + \sum_{k=1}^{P} \Phi_k y_{t-ks}
 //@return vector[rows(x_lag)] mu_t. Both design matrices MUST be built with the same offset L = max(p, P*s).
-vector sar(real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag){
+pub vector sar(real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag){
     return alpha + x_lag * phi + X_slag * Phi;
 }
 
@@ -306,7 +306,7 @@ vector sar(real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag){
 //@param real sigma
 //@math \log p(y) = \sum_{t=p+1}^{T} \log \mathcal{N}(y_t \mid \alpha + \sum_i \phi_i y_{t-i}, \sigma)
 //@return real Log density of y_obs
-real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X_lag, real sigma){
+pub real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X_lag, real sigma){
     return normal_lpdf(y_obs | alpha + X_lag * phi, sigma);
 }
 
@@ -320,7 +320,7 @@ real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X_lag, real sigma){
 //@param real sigma
 //@math \log p(y) = \sum_{t=p+1}^{T} \log \mathcal{N}(y_t \mid \alpha + \sum_i \phi_i y_{t-i} + x_t^\top\beta, \sigma)
 //@return real Log density of y_obs
-real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X_lag, real sigma, matrix X, vector beta){
+pub real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X_lag, real sigma, matrix X, vector beta){
     return normal_lpdf(y_obs | alpha + X_lag * phi + X * beta, sigma);
 }
 
@@ -335,7 +335,7 @@ real ar_lpdf(vector y_obs, real alpha, vector phi, matrix X_lag, real sigma, mat
 //@param vector y_obs
 //@math \log p(y) = \sum_t \log \mathcal{N}(y_t \mid \alpha + \sum_i \phi_i y_{t-i} + \sum_k \Phi_k y_{t-ks} + x_t^\top\beta, \sigma)
 //@return real Log density of y_obs
-real sar_lpdf(vector y_obs, real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, real sigma, matrix X, vector beta){
+pub real sar_lpdf(vector y_obs, real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, real sigma, matrix X, vector beta){
     return  normal_lpdf(y_obs | alpha + x_lag * phi + X_slag * Phi + X * beta, sigma);
 }
 
@@ -350,7 +350,7 @@ real sar_lpdf(vector y_obs, real alpha, vector phi, vector Phi, matrix x_lag, ma
 //@param vector y_obs
 //@math \log p(y) = \sum_t \log \mathcal{N}(y_t \mid \alpha + \sum_i \phi_i y_{t-i} + \sum_k \Phi_k y_{t-ks}, \sigma)
 //@return real Log density of y_obs
-real sar_lpdf(vector y_obs, real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, real sigma){
+pub real sar_lpdf(vector y_obs, real alpha, vector phi, vector Phi, matrix x_lag, matrix X_slag, real sigma){
     return  normal_lpdf(y_obs | alpha + x_lag * phi + X_slag * Phi, sigma);
 }
 
@@ -364,7 +364,7 @@ real sar_lpdf(vector y_obs, real alpha, vector phi, vector Phi, matrix x_lag, ma
 //@example vector y_sim = ts::ar_rng(100, y_init, alpha, phi, sigma);
 //@math y_{t} \sim \mathcal{N}(\alpha + \sum_{i=1}^{p}\phi_i y_{t-i},\ \sigma)
 //@return vector[H] Simulated observations
-vector ar_rng(int H, vector y_init, real alpha, vector phi, real sigma){
+pub vector ar_rng(int H, vector y_init, real alpha, vector phi, real sigma){
     int p = num_elements(phi);
     vector[p + H] full;
     full[1:p] = y_init;
@@ -387,7 +387,7 @@ vector ar_rng(int H, vector y_init, real alpha, vector phi, real sigma){
 //@example vector y_f = ts::ar_forecast_rng(y, 12, alpha, phi, sigma);
 //@math y_{T+h} \sim \mathcal{N}(\alpha + \sum_{i=1}^{p}\phi_i y_{T+h-i},\ \sigma)
 //@return vector[H] Posterior predictive draws for t = T+1,...,T+H
-vector ar_forecast_rng(vector y_obs, int H, real alpha, vector phi, real sigma){
+pub vector ar_forecast_rng(vector y_obs, int H, real alpha, vector phi, real sigma){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     vector[T + H] full;
@@ -413,7 +413,7 @@ vector ar_forecast_rng(vector y_obs, int H, real alpha, vector phi, real sigma){
 //@example vector y_f = ts::ar_forecast_rng(y, 12, alpha, phi, sigma, X_f, beta);
 //@math y_{T+h} \sim \mathcal{N}(\alpha + \sum_i \phi_i y_{T+h-i} + x_{T+h}^\top\beta,\ \sigma)
 //@return vector[H] Posterior predictive draws for t = T+1,...,T+H
-vector ar_forecast_rng(vector y_obs, int H, real alpha, vector phi, real sigma, matrix X_f, vector beta){
+pub vector ar_forecast_rng(vector y_obs, int H, real alpha, vector phi, real sigma, matrix X_f, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     vector[T + H] full;
@@ -438,7 +438,7 @@ vector ar_forecast_rng(vector y_obs, int H, real alpha, vector phi, real sigma, 
 //@param real sigma
 //@math y_t \sim \mathcal{N}(\alpha + \sum_i \phi_i y_{t-i} + \sum_k \Phi_k y_{t-ks},\ \sigma)
 //@return vector[H] Simulated observations
-vector sar_rng(int H, vector y_init, real alpha, vector phi, vector Phi, int s, real sigma){
+pub vector sar_rng(int H, vector y_init, real alpha, vector phi, vector Phi, int s, real sigma){
     int L = num_elements(y_init);
     int p = num_elements(phi);
     int P = num_elements(Phi);
@@ -465,7 +465,7 @@ vector sar_rng(int H, vector y_init, real alpha, vector phi, vector Phi, int s, 
 //@param real sigma
 //@math y_{T+h} \sim \mathcal{N}(\alpha + \sum_i \phi_i y_{T+h-i} + \sum_k \Phi_k y_{T+h-ks},\ \sigma)
 //@return vector[H] Posterior predictive draws for t = T+1,...,T+H
-vector sar_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector Phi, int s, real sigma){
+pub vector sar_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector Phi, int s, real sigma){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int P = num_elements(Phi);
@@ -492,7 +492,7 @@ vector sar_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector Phi,
 //@example mu_eps = ts::ma(y, alpha, theta);
 //@math \mu_t = \alpha + \sum_{j=1}^{q}\theta_j \varepsilon_{t-j}, \quad \varepsilon_t = y_t - \mu_t, \quad \varepsilon_{t\le 0} = 0
 //@return Array of vectors in position array[1] is the mu_t and in array[2] is eps
-array[] vector ma(vector y, real alpha, vector theta){
+pub array[] vector ma(vector y, real alpha, vector theta){
     int T = num_elements(y);
     int q = num_elements(theta);
     array[2] vector[T] results; // array[1] mu_t and array[2] eps
@@ -518,7 +518,7 @@ array[] vector ma(vector y, real alpha, vector theta){
 //@example mu_eps = ts::ma(y, alpha, theta, X, beta);
 //@math \mu_t = \alpha + x_t^\top\beta + \sum_{j=1}^{q}\theta_j \varepsilon_{t-j}, \quad \varepsilon_t = y_t - \mu_t
 //@return Array of vectors in position array[1] is the mu_t and in array[2] is eps
-array[] vector ma(vector y, real alpha, vector theta, matrix X, vector beta){
+pub array[] vector ma(vector y, real alpha, vector theta, matrix X, vector beta){
     int T = num_elements(y);
     int q = num_elements(theta);
     array[2] vector[T] results; // array[1] mu_t and array[2] eps
@@ -547,7 +547,7 @@ array[] vector ma(vector y, real alpha, vector theta, matrix X, vector beta){
 //@example results = ts::sma(y, alpha, theta, Theta, 12);
 //@math \mu_t = \alpha + \sum_{j=1}^{q}\theta_j\varepsilon_{t-j} + \sum_{k=1}^{Q}\Theta_k\varepsilon_{t-ks}
 //@return Array of vectors in position array[1] is the mu_t and in array[2] is eps
-array[] vector sma(vector y, real alpha, vector theta, vector Theta, int s){
+pub array[] vector sma(vector y, real alpha, vector theta, vector Theta, int s){
     int T = num_elements(y);
     int q = num_elements(theta);
     int Q = num_elements(Theta);
@@ -580,7 +580,7 @@ array[] vector sma(vector y, real alpha, vector theta, vector Theta, int s){
 //@example results = ts::sma(y, alpha, theta, Theta, 12, X, beta);
 //@math \mu_t = \alpha + x_t^\top\beta + \sum_j \theta_j\varepsilon_{t-j} + \sum_k \Theta_k\varepsilon_{t-ks}
 //@return Array of vectors in position array[1] is the mu_t and in array[2] is eps
-array[] vector sma(vector y, real alpha, vector theta, vector Theta, int s, matrix X, vector beta){
+pub array[] vector sma(vector y, real alpha, vector theta, vector Theta, int s, matrix X, vector beta){
     int T = num_elements(y);
     int q = num_elements(theta);
     int Q = num_elements(Theta);
@@ -612,7 +612,7 @@ array[] vector sma(vector y, real alpha, vector theta, vector Theta, int s, matr
 //@param real sigma
 //@math \log p(y) = \sum_{t=1}^{T}\log\mathcal{N}(y_t \mid \alpha + \sum_j \theta_j\varepsilon_{t-j},\ \sigma)
 //@return real Log density of y_obs
-real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma){
+pub real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma){
     int T = num_elements(y_obs);
     int q = num_elements(theta);
     vector[T] mu_t;
@@ -642,7 +642,7 @@ real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma){
 //@param real sigma
 //@math \log p(y) = \sum_{t=1}^{T}\log\mathcal{N}(y_t \mid \alpha + x_t^\top\beta + \sum_j \theta_j\varepsilon_{t-j},\ \sigma)
 //@return real Log density of y_obs
-real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma, matrix X, vector beta){
+pub real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma, matrix X, vector beta){
     int T = num_elements(y_obs);
     int q = num_elements(theta);
     vector[T] mu_t;
@@ -674,7 +674,7 @@ real ma_lpdf(vector y_obs, real alpha, vector theta, real sigma, matrix X, vecto
 //@param int s Seasonal period
 //@math \log p(y) = \sum_t \log\mathcal{N}(y_t \mid \alpha + \sum_j\theta_j\varepsilon_{t-j} + \sum_k\Theta_k\varepsilon_{t-ks},\ \sigma)
 //@return real Log density of y_obs
-real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, int s){
+pub real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, int s){
     int T = num_elements(y_obs);
     int q = num_elements(theta);
     int Q = num_elements(Theta);
@@ -712,7 +712,7 @@ real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, 
 //@param int s Seasonal period
 //@math \log p(y) = \sum_t \log\mathcal{N}(y_t \mid \alpha + x_t^\top\beta + \sum_j\theta_j\varepsilon_{t-j} + \sum_k\Theta_k\varepsilon_{t-ks},\ \sigma)
 //@return real Log density of y_obs
-real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, int s, matrix X, vector beta){
+pub real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, int s, matrix X, vector beta){
     int T = num_elements(y_obs);
     int q = num_elements(theta);
     int Q = num_elements(Theta);
@@ -748,7 +748,7 @@ real sma_lpdf(vector y_obs, real alpha, vector theta, vector Theta, real sigma, 
 //@example vector y_sim = ts::ma_rng(100, alpha, theta, sigma);
 //@math \varepsilon_t \sim \mathcal{N}(0,\sigma), \quad y_t = \alpha + \sum_{j=1}^{q}\theta_j\varepsilon_{t-j} + \varepsilon_t
 //@return vector[H] Simulated observations
-vector ma_rng(int H, real alpha, vector theta, real sigma){
+pub vector ma_rng(int H, real alpha, vector theta, real sigma){
     int q = num_elements(theta);
     vector[H] y;
     vector[H] eps;
@@ -772,7 +772,7 @@ vector ma_rng(int H, real alpha, vector theta, real sigma){
 //@example vector y_f = ts::ma_forecast_rng(y, 12, alpha, theta, sigma);
 //@math Residuals are replayed from y_{1:T}; future \varepsilon_{T+h} \sim \mathcal{N}(0,\sigma). Forecasts are flat beyond h = q.
 //@return vector[H] Posterior predictive draws for t = T+1,...,T+H
-vector ma_forecast_rng(vector y_obs, int H, real alpha, vector theta, real sigma){
+pub vector ma_forecast_rng(vector y_obs, int H, real alpha, vector theta, real sigma){
     int T = num_elements(y_obs);
     int q = num_elements(theta);
     vector[T + H] eps;
@@ -802,7 +802,7 @@ vector ma_forecast_rng(vector y_obs, int H, real alpha, vector theta, real sigma
 //@param real sigma
 //@math y_t = \alpha + \sum_j\theta_j\varepsilon_{t-j} + \sum_k\Theta_k\varepsilon_{t-ks} + \varepsilon_t
 //@return vector[H] Simulated observations
-vector sma_rng(int H, real alpha, vector theta, vector Theta, int s, real sigma){
+pub vector sma_rng(int H, real alpha, vector theta, vector Theta, int s, real sigma){
     int q = num_elements(theta);
     int Q = num_elements(Theta);
     vector[H] y;
@@ -829,7 +829,7 @@ vector sma_rng(int H, real alpha, vector theta, vector Theta, int s, real sigma)
 //@param real sigma
 //@math Residuals replayed from y_{1:T}; future \varepsilon_{T+h}\sim\mathcal{N}(0,\sigma)
 //@return vector[H] Posterior predictive draws for t = T+1,...,T+H
-vector sma_forecast_rng(vector y_obs, int H, real alpha, vector theta, vector Theta, int s, real sigma){
+pub vector sma_forecast_rng(vector y_obs, int H, real alpha, vector theta, vector Theta, int s, real sigma){
     int T = num_elements(y_obs);
     int q = num_elements(theta);
     int Q = num_elements(Theta);
@@ -862,7 +862,7 @@ vector sma_forecast_rng(vector y_obs, int H, real alpha, vector theta, vector Th
 //@example results = ts::arma(y_obs, alpha, phi, theta);
 //@math \mu_t = \alpha + \sum_{i=1}^{p}\phi_i y_{t-i} + \sum_{j=1}^{q}\theta_j\varepsilon_{t-j}, \quad \varepsilon_t = y_t - \mu_t
 //@return array of 2 where array[1] is mu_t and array[2] is eps
-array [] vector arma(vector y_obs, real alpha, vector phi, vector theta){
+pub array [] vector arma(vector y_obs, real alpha, vector phi, vector theta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -886,7 +886,7 @@ array [] vector arma(vector y_obs, real alpha, vector phi, vector theta){
 //@example results = ts::arma(y_obs, alpha, phi, theta, X, beta);
 //@math \mu_t = \alpha + x_t^\top\beta + \sum_i\phi_i y_{t-i} + \sum_j\theta_j\varepsilon_{t-j}
 //@return array of 2 where array[1] is mu_t and array[2] is eps
-array [] vector arma(vector y_obs, real alpha, vector phi, vector theta, matrix X, vector beta){
+pub array [] vector arma(vector y_obs, real alpha, vector phi, vector theta, matrix X, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -912,7 +912,7 @@ array [] vector arma(vector y_obs, real alpha, vector phi, vector theta, matrix 
 //@param int s Seasonal period
 //@math \mu_t = \alpha + \sum_i\phi_i y_{t-i} + \sum_k\Phi_k y_{t-ks} + \sum_j\theta_j\varepsilon_{t-j} + \sum_n\Theta_n\varepsilon_{t-ns}
 //@return array of 2 where array[1] is mu_t and array[2] is eps
-array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s){
+pub array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -947,7 +947,7 @@ array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector t
 //@param int s Seasonal period
 //@math \mu_t = \alpha + x_t^\top\beta + \sum_i\phi_i y_{t-i} + \sum_k\Phi_k y_{t-ks} + \sum_j\theta_j\varepsilon_{t-j} + \sum_n\Theta_n\varepsilon_{t-ns}
 //@return array of 2 where array[1] is mu_t and array[2] is eps
-array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, matrix X, vector beta){
+pub array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, matrix X, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -981,7 +981,7 @@ array [] vector sarma(vector y_obs, real alpha, vector phi, vector Phi, vector t
 //@param real sigma
 //@math \log p(y) = \sum_{t=1}^{T}\log\mathcal{N}(y_t \mid \alpha + \sum_i\phi_i y_{t-i} + \sum_j\theta_j\varepsilon_{t-j},\ \sigma)
 //@return real Log density of y_obs
-real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma){
+pub real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -1011,7 +1011,7 @@ real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma){
 //@param real sigma
 //@math \log p(y) = \sum_{t=1}^{T}\log\mathcal{N}(y_t \mid \alpha + x_t^\top\beta + \sum_i\phi_i y_{t-i} + \sum_j\theta_j\varepsilon_{t-j},\ \sigma)
 //@return real Log density of y_obs
-real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma, matrix X, vector beta){
+pub real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma, matrix X, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -1044,7 +1044,7 @@ real arma_lpdf(vector y_obs, real alpha, vector phi, vector theta, real sigma, m
 //@param int s Seasonal period
 //@math \log p(y) = \sum_t \log\mathcal{N}(y_t \mid \mu_t, \sigma) with the SARMA recursion for \mu_t
 //@return real Log density of y_obs
-real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, real sigma, int s){
+pub real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, real sigma, int s){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -1084,7 +1084,7 @@ real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, 
 //@param int s Seasonal period
 //@math \log p(y) = \sum_t \log\mathcal{N}(y_t \mid \mu_t, \sigma) with x_t^\top\beta added to \mu_t
 //@return real Log density of y_obs
-real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, real sigma, int s, matrix X, vector beta){
+pub real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, real sigma, int s, matrix X, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -1122,7 +1122,7 @@ real sarma_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, 
 //@example vector y_sim = ts::arma_rng(200, alpha, phi, theta, sigma);
 //@math y_t = \alpha + \sum_i\phi_i y_{t-i} + \sum_j\theta_j\varepsilon_{t-j} + \varepsilon_t, \quad \varepsilon_t\sim\mathcal{N}(0,\sigma)
 //@return vector[H] Simulated observations
-vector arma_rng(int H, real alpha, vector phi, vector theta, real sigma){
+pub vector arma_rng(int H, real alpha, vector phi, vector theta, real sigma){
     int p = num_elements(phi);
     int q = num_elements(theta);
     vector[H] y;
@@ -1149,7 +1149,7 @@ vector arma_rng(int H, real alpha, vector phi, vector theta, real sigma){
 //@example vector y_f = ts::arma_forecast_rng(y, 12, alpha, phi, theta, sigma);
 //@math Residuals replayed from y_{1:T}; then y_{T+h} = \alpha + \sum_i\phi_i y_{T+h-i} + \sum_j\theta_j\varepsilon_{T+h-j} + \varepsilon_{T+h}
 //@return vector[H] Posterior predictive draws for t = T+1,...,T+H
-vector arma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector theta, real sigma){
+pub vector arma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector theta, real sigma){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -1186,7 +1186,7 @@ vector arma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector the
 //@param vector beta
 //@math As arma_forecast_rng, with x_t^\top\beta in \mu_t for both the replay and the forecast
 //@return vector[H] Posterior predictive draws for t = T+1,...,T+H
-vector arma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector theta, real sigma, matrix X, matrix X_f, vector beta){
+pub vector arma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector theta, real sigma, matrix X, matrix X_f, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -1222,7 +1222,7 @@ vector arma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector the
 //@param real sigma
 //@math y_t = \mu_t + \varepsilon_t with the SARMA recursion for \mu_t
 //@return vector[H] Simulated observations
-vector sarma_rng(int H, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, real sigma){
+pub vector sarma_rng(int H, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, real sigma){
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
     vector[H] y;
@@ -1253,7 +1253,7 @@ vector sarma_rng(int H, real alpha, vector phi, vector Phi, vector theta, vector
 //@param real sigma
 //@math Residuals replayed from y_{1:T}, then the SARMA recursion is run forward
 //@return vector[H] Posterior predictive draws for t = T+1,...,T+H
-vector sarma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, real sigma){
+pub vector sarma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector Phi, vector theta, vector Theta, int s, real sigma){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -1291,7 +1291,7 @@ vector sarma_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector Ph
 //@param vector y_obs
 //@math z_t = \nabla^d y_t, \quad \mu_t = \alpha + \sum_i\phi_i z_{t-i} + \sum_j\theta_j\varepsilon_{t-j}, \quad \varepsilon_t = z_t - \mu_t
 //@return array of 2 over the differenced scale, length T-d: array[1] is mu_t, array[2] is eps
-array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta){
+pub array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -1320,7 +1320,7 @@ array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta){
 //@param vector beta
 //@math \mu_t = \alpha + x_t^\top\beta + \sum_i\phi_i z_{t-i} + \sum_j\theta_j\varepsilon_{t-j}, \quad z = \nabla^d y
 //@return array of 2 over the differenced scale, length T-d: array[1] is mu_t, array[2] is eps
-array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta, matrix X, vector beta){
+pub array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta, matrix X, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -1351,7 +1351,7 @@ array[] vector arima(vector y_obs, real alpha, int d, vector phi, vector theta, 
 //@param int s Seasonal period
 //@math z_t = \nabla^d \nabla_s^D y_t, then the SARMA recursion is applied to z
 //@return Array of vectors over the differenced scale, length T - D*s - d: [1] mu_t, [2] eps
-array[] vector sarima(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s){
+pub array[] vector sarima(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -1393,7 +1393,7 @@ array[] vector sarima(vector y_obs, real alpha, vector phi, vector Phi, vector t
 //@param vector beta
 //@math z_t = \nabla^d \nabla_s^D y_t, \quad \mu_t = \alpha + x_t^\top\beta + \text{SARMA}(z)_t
 //@return Array of vectors over the differenced scale: [1] mu_t, [2] eps
-array[] vector sarima(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s, matrix X, vector beta){
+pub array[] vector sarima(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s, matrix X, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -1430,7 +1430,7 @@ array[] vector sarima(vector y_obs, real alpha, vector phi, vector Phi, vector t
 //@param real sigma
 //@math \log p(\nabla^d y) = \sum_t \log\mathcal{N}(z_t \mid \mu_t, \sigma). NOTE the density is on the differenced scale, so models with different d are NOT comparable by lp__ or loo.
 //@return real Log density of the differenced series
-real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real sigma){
+pub real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real sigma){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -1465,7 +1465,7 @@ real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real 
 //@param vector beta
 //@math \log p(\nabla^d y) = \sum_t \log\mathcal{N}(z_t \mid \alpha + x_t^\top\beta + \dots,\ \sigma)
 //@return real Log density of the differenced series
-real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real sigma, matrix X, vector beta){
+pub real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real sigma, matrix X, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);
     int q = num_elements(theta);
@@ -1502,7 +1502,7 @@ real arima_lpdf(vector y_obs, real alpha, int d, vector phi, vector theta, real 
 //@param real sigma
 //@math \log p(z) = \sum_t \log\mathcal{N}(z_t \mid \mu_t, \sigma), \quad z = \nabla^d\nabla_s^D y
 //@return real Log density of the differenced series
-real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s, real sigma){
+pub real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s, real sigma){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -1549,7 +1549,7 @@ real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta,
 //@param vector beta
 //@math \log p(z) = \sum_t \log\mathcal{N}(z_t \mid \alpha + x_t^\top\beta + \dots,\ \sigma)
 //@return real Log density of the differenced series
-real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s, real sigma, matrix X, vector beta){
+pub real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s, real sigma, matrix X, vector beta){
     int T = num_elements(y_obs);
     int p = num_elements(phi);   int P = num_elements(Phi);
     int q = num_elements(theta); int Q = num_elements(Theta);
@@ -1592,7 +1592,7 @@ real sarima_lpdf(vector y_obs, real alpha, vector phi, vector Phi, vector theta,
 //@param real sigma
 //@math Simulate z \sim ARMA(p,q), then integrate d times anchored at y_init
 //@return vector[H] Simulated observations on the level scale
-vector arima_rng(int H, vector y_init, real alpha, int d, vector phi, vector theta, real sigma){
+pub vector arima_rng(int H, vector y_init, real alpha, int d, vector phi, vector theta, real sigma){
     vector[H] delta_f = arma_rng(H, alpha, phi, theta, sigma);
     return undifference(y_init, delta_f, d);
 }
@@ -1609,7 +1609,7 @@ vector arima_rng(int H, vector y_init, real alpha, int d, vector phi, vector the
 //@example vector y_f = ts::arima_forecast_rng(y, 12, alpha, 1, phi, theta, sigma);
 //@math Forecast \nabla^d y forward with the ARMA recursion, then integrate back: y_{T+h} accumulates the forecast differences onto y_T
 //@return vector[H] Posterior predictive draws on the level scale
-vector arima_forecast_rng(vector y_obs, int H, real alpha, int d, vector phi, vector theta, real sigma){
+pub vector arima_forecast_rng(vector y_obs, int H, real alpha, int d, vector phi, vector theta, real sigma){
     int T = num_elements(y_obs);
     vector[T - d] delta_y = difference(y_obs, d);
     vector[H] delta_f = arma_forecast_rng(delta_y, H, alpha, phi, theta, sigma);
@@ -1630,7 +1630,7 @@ vector arima_forecast_rng(vector y_obs, int H, real alpha, int d, vector phi, ve
 //@param vector beta
 //@math As arima_forecast_rng, with x_t^\top\beta carried through the ARMA recursion on the differenced scale
 //@return vector[H] Posterior predictive draws on the level scale
-vector arima_forecast_rng(vector y_obs, int H, real alpha, int d, vector phi, vector theta, real sigma, matrix X, matrix X_f, vector beta){
+pub vector arima_forecast_rng(vector y_obs, int H, real alpha, int d, vector phi, vector theta, real sigma, matrix X, matrix X_f, vector beta){
     int T = num_elements(y_obs);
     vector[T - d] delta_y = difference(y_obs, d);
     vector[H] delta_f = arma_forecast_rng(delta_y, H, alpha, phi, theta, sigma, X, X_f, beta);
@@ -1652,7 +1652,7 @@ vector arima_forecast_rng(vector y_obs, int H, real alpha, int d, vector phi, ve
 //@param real sigma
 //@math Forecast z = \nabla^d\nabla_s^D y with the SARMA recursion, undo \nabla^d, then undo \nabla_s^D
 //@return vector[H] Posterior predictive draws on the level scale
-vector sarima_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s, real sigma){
+pub vector sarima_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector Phi, vector theta, vector Theta, int d, int D, int s, real sigma){
     int T = num_elements(y_obs);
     vector[T - D * s] y_seasonal = seasonal_difference(y_obs, s, D);
     vector[T - D * s - d] delta_y = difference(y_seasonal, d);
@@ -1677,7 +1677,7 @@ vector sarima_forecast_rng(vector y_obs, int H, real alpha, vector phi, vector P
 //@param int m        seasonal period, m >= 1
 //@math \hat{y}_t = \ell_{t-1} + b_{t-1} + s_{t-m} \\ \ell_t = \alpha(y_t - s_{t-m}) + (1-\alpha)(\ell_{t-1} + b_{t-1}) \\ b_t = \beta(\ell_t - \ell_{t-1}) + (1-\beta)b_{t-1} \\ s_t = \gamma(y_t - \ell_t) + (1-\gamma)s_{t-m}
 //@return vector[N] One-step-ahead predictions \hat{y}_t
-vector exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m){
+pub vector exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m){
     int N = num_elements(y_obs);
     vector[N] y_hat;  vector[N + 1] lt;
     vector[N + 1] bt; vector[N + m] st;
@@ -1716,7 +1716,7 @@ vector exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, re
 //@param vector beta_c Covariate coefficients
 //@math \hat{y}_t = \ell_{t-1} + b_{t-1} + s_{t-m} + x_t^\top\beta_c. The regression part is removed from y_t before the level and seasonal updates, so it is not absorbed twice.
 //@return vector[N] One-step-ahead predictions \hat{y}_t
-vector exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, matrix X, vector beta_c){
+pub vector exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, matrix X, vector beta_c){
     int N = num_elements(y_obs);
     vector[N] y_hat;  vector[N + 1] lt;
     vector[N + 1] bt; vector[N + m] st;
@@ -1756,7 +1756,7 @@ vector exponential_smoothing(vector y_obs, real alpha, real beta, real gamma, re
 //@param real sigma
 //@math \log p(y) = \sum_{t=1}^{N}\log\mathcal{N}(y_t \mid \hat{y}_t, \sigma)
 //@return real Log density of y_obs
-real exponential_smoothing_lpdf(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma){
+pub real exponential_smoothing_lpdf(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma){
     return normal_lpdf(y_obs | exponential_smoothing(y_obs, alpha, beta, gamma, l0, b0, s0, m), sigma);
 }
 
@@ -1774,7 +1774,7 @@ real exponential_smoothing_lpdf(vector y_obs, real alpha, real beta, real gamma,
 //@param vector beta_c Covariate coefficients
 //@math \log p(y) = \sum_{t=1}^{N}\log\mathcal{N}(y_t \mid \hat{y}_t, \sigma)
 //@return real Log density of y_obs
-real exponential_smoothing_lpdf(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma, matrix X, vector beta_c){
+pub real exponential_smoothing_lpdf(vector y_obs, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma, matrix X, vector beta_c){
     return normal_lpdf(y_obs | exponential_smoothing(y_obs, alpha, beta, gamma, l0, b0, s0, m, X, beta_c), sigma);
 }
 
@@ -1791,7 +1791,7 @@ real exponential_smoothing_lpdf(vector y_obs, real alpha, real beta, real gamma,
 //@param real sigma
 //@math y_t \sim \mathcal{N}(\ell_{t-1} + b_{t-1} + s_{t-m},\ \sigma), with the filter then updated using the drawn y_t
 //@return vector[H] Simulated observations
-vector exponential_smoothing_rng(int H, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma){
+pub vector exponential_smoothing_rng(int H, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma){
     vector[H] y;      vector[H + 1] lt;
     vector[H + 1] bt; vector[H + m] st;
 
@@ -1820,7 +1820,7 @@ vector exponential_smoothing_rng(int H, real alpha, real beta, real gamma, real 
 //@example vector y_f = ts::exponential_smoothing_forecast_rng(y, 12, alpha, beta, gamma, l0, b0, s0, 12, sigma);
 //@math The filter is replayed over y_{1:N} to recover \ell_N, b_N, s; then \hat{y}_{N+h} = \ell_N + h\,b_N + s_{N+h-m} and y_{N+h}\sim\mathcal{N}(\hat{y}_{N+h},\sigma). The seasonal states are frozen at their final values over the horizon.
 //@return vector[H] Posterior predictive draws for t = N+1,...,N+H
-vector exponential_smoothing_forecast_rng(vector y_obs, int H, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma){
+pub vector exponential_smoothing_forecast_rng(vector y_obs, int H, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma){
     int N = num_elements(y_obs);
     vector[N + 1] lt; vector[N + 1] bt; vector[N + m] st;
     vector[H] y_f;
@@ -1858,7 +1858,7 @@ vector exponential_smoothing_forecast_rng(vector y_obs, int H, real alpha, real 
 //@param vector beta_c
 //@math As exponential_smoothing_forecast_rng, with x_{N+h}^\top\beta_c added to the forecast mean
 //@return vector[H] Posterior predictive draws for t = N+1,...,N+H
-vector exponential_smoothing_forecast_rng(vector y_obs, int H, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma, matrix X, matrix X_f, vector beta_c){
+pub vector exponential_smoothing_forecast_rng(vector y_obs, int H, real alpha, real beta, real gamma, real l0, real b0, vector s0, int m, real sigma, matrix X, matrix X_f, vector beta_c){
     int N = num_elements(y_obs);
     vector[N + 1] lt; vector[N + 1] bt; vector[N + m] st;
     vector[H] y_f;
@@ -1891,7 +1891,7 @@ vector exponential_smoothing_forecast_rng(vector y_obs, int H, real alpha, real 
 //@param vector mu   Conditional mean, supplied by any mean model
 //@math \varepsilon_t = y_t - \mu_t, \quad \sigma_t^2 = \omega + \alpha\varepsilon_{t-1}^2 + \beta\sigma_{t-1}^2, \quad \sigma_1^2 = \frac{\omega}{1 - \alpha - \beta}
 //@return vector[N] Conditional standard deviations \sigma_t
-vector garch(vector y_obs, real omega, real alpha, real beta, vector mu){
+pub vector garch(vector y_obs, real omega, real alpha, real beta, vector mu){
     int N = num_elements(y_obs);
     vector[N] sd2;
     vector[N] eps;
@@ -1915,7 +1915,7 @@ vector garch(vector y_obs, real omega, real alpha, real beta, vector mu){
 //@param vector mu   Conditional mean, supplied by any mean model
 //@math \log p(y) = \sum_{t=1}^{N}\log\mathcal{N}(y_t \mid \mu_t, \sigma_t)
 //@return real Log density of y_obs
-real garch_lpdf(vector y_obs, real omega, real alpha, real beta, vector mu){
+pub real garch_lpdf(vector y_obs, real omega, real alpha, real beta, vector mu){
     return normal_lpdf(y_obs | mu, garch(y_obs, omega, alpha, beta, mu));
 }
 
@@ -1928,7 +1928,7 @@ real garch_lpdf(vector y_obs, real omega, real alpha, real beta, vector mu){
 //@param vector mu  Conditional mean over the H simulated points
 //@math \sigma_t^2 = \omega + \alpha\varepsilon_{t-1}^2 + \beta\sigma_{t-1}^2, \quad y_t = \mu_t + \varepsilon_t, \quad \varepsilon_t\sim\mathcal{N}(0,\sigma_t)
 //@return vector[H] Simulated observations
-vector garch_rng(int H, real omega, real alpha, real beta, vector mu){
+pub vector garch_rng(int H, real omega, real alpha, real beta, vector mu){
     vector[H] y;
     vector[H] sd2;
     vector[H] eps;
@@ -1956,7 +1956,7 @@ vector garch_rng(int H, real omega, real alpha, real beta, vector mu){
 //@param vector mu_f Conditional mean over the forecast horizon, length H
 //@math The variance recursion is replayed over y_{1:N}, then continued: \sigma_{N+h}^2 = \omega + \alpha\varepsilon_{N+h-1}^2 + \beta\sigma_{N+h-1}^2
 //@return vector[H] Posterior predictive draws for t = N+1,...,N+H
-vector garch_forecast_rng(vector y_obs, int H, real omega, real alpha, real beta, vector mu, vector mu_f){
+pub vector garch_forecast_rng(vector y_obs, int H, real omega, real alpha, real beta, vector mu, vector mu_f){
     int N = num_elements(y_obs);
     vector[N + H] sd2;
     vector[N + H] eps;
@@ -1986,7 +1986,7 @@ vector garch_forecast_rng(vector y_obs, int H, real omega, real alpha, real beta
 //@param real scale           spread of y; makes kappa dimensionless
 //@math G_t = \mathrm{logit}^{-1}\!\left(\kappa\frac{y_{t-d} - c}{\text{scale}}\right) \\ \mu_t = (1 - G_t)\left(\alpha_1 + \sum_j \phi^{(1)}_j y_{t-j}\right) + G_t\left(\alpha_2 + \sum_j \phi^{(2)}_j y_{t-j}\right)
 //@return vector[N - L] mu, aligned to t = L+1,...,N
-vector star(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale){
+pub vector star(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale){
     int N = num_elements(y_obs);
     int p = num_elements(phi1);
     int L = max(p, d);
@@ -2017,7 +2017,7 @@ vector star(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, re
 //@param vector beta
 //@math \mu_t = (1 - G_t)m^{(1)}_t + G_t m^{(2)}_t + x_t^\top\beta
 //@return vector[N - L] mu, aligned to t = L+1,...,N
-vector star(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, matrix X, vector beta){
+pub vector star(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, matrix X, vector beta){
     int N = num_elements(y_obs);
     int p = num_elements(phi1);
     int L = max(p, d);
@@ -2047,7 +2047,7 @@ vector star(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, re
 //@param real sigma
 //@math \log p(y) = \sum_{t=L+1}^{N}\log\mathcal{N}(y_t \mid \mu_t, \sigma), \quad L = \max(p, d)
 //@return real Log density of y_obs[(L+1):N]
-real star_lpdf(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma){
+pub real star_lpdf(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma){
     int N = num_elements(y_obs);
     int L = max(num_elements(phi1), d);
     return normal_lpdf(y_obs[(L + 1):N] | star(y_obs, alpha1, alpha2, phi1, phi2, c, kappa, d, scale), sigma);
@@ -2066,7 +2066,7 @@ real star_lpdf(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2,
 //@param vector beta
 //@math \log p(y) = \sum_{t=L+1}^{N}\log\mathcal{N}(y_t \mid \mu_t, \sigma), \quad L = \max(p, d)
 //@return real Log density of y_obs[(L+1):N]
-real star_lpdf(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma, matrix X, vector beta){
+pub real star_lpdf(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma, matrix X, vector beta){
     int N = num_elements(y_obs);
     int L = max(num_elements(phi1), d);
     return normal_lpdf(y_obs[(L + 1):N] | star(y_obs, alpha1, alpha2, phi1, phi2, c, kappa, d, scale, X, beta), sigma);
@@ -2085,7 +2085,7 @@ real star_lpdf(vector y_obs, real alpha1, real alpha2, vector phi1, vector phi2,
 //@param real sigma
 //@math y_t \sim \mathcal{N}((1-G_t)m^{(1)}_t + G_t m^{(2)}_t,\ \sigma)
 //@return vector[H] Simulated observations
-vector star_rng(int H, vector y_init, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma){
+pub vector star_rng(int H, vector y_init, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma){
     int L = num_elements(y_init);
     int p = num_elements(phi1);
     vector[L + H] full;
@@ -2118,7 +2118,7 @@ vector star_rng(int H, vector y_init, real alpha1, real alpha2, vector phi1, vec
 //@param real sigma
 //@math The regime weight G_{N+h} is computed from the drawn y_{N+h-d}, so the forecast can switch regimes along the horizon
 //@return vector[H] Posterior predictive draws for t = N+1,...,N+H
-vector star_forecast_rng(vector y_obs, int H, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma){
+pub vector star_forecast_rng(vector y_obs, int H, real alpha1, real alpha2, vector phi1, vector phi2, real c, real kappa, int d, real scale, real sigma){
     int N = num_elements(y_obs);
     int p = num_elements(phi1);
     vector[N + H] full;
@@ -2147,7 +2147,7 @@ vector star_forecast_rng(vector y_obs, int H, real alpha1, real alpha2, vector p
 //@param array[] int y_obs
 //@math \eta_t = \omega + \sum_{p}\alpha_p\log(1 + y_{t-p}) + \sum_{q}\beta_q\log\lambda_{t-q}, \quad \lambda_t = e^{\eta_t}, \quad y_t \sim \text{Poisson}(\lambda_t)
 //@return vector[N] Conditional intensities \lambda_t
-vector ingarch(array[] int y_obs, real omega, vector alpha, vector beta){
+pub vector ingarch(array[] int y_obs, real omega, vector alpha, vector beta){
     int N = size(y_obs);
     int P = num_elements(alpha);
     int Q = num_elements(beta);
@@ -2176,7 +2176,7 @@ vector ingarch(array[] int y_obs, real omega, vector alpha, vector beta){
 //@param vector beta_c Covariate coefficients
 //@math \eta_t = \omega + x_t^\top\beta_c + \sum_p\alpha_p\log(1 + y_{t-p}) + \sum_q\beta_q\log\lambda_{t-q}. The regression sits INSIDE the log link, so \lambda_t stays positive.
 //@return vector[N] Conditional intensities \lambda_t
-vector ingarch(array[] int y_obs, real omega, vector alpha, vector beta, matrix X, vector beta_c){
+pub vector ingarch(array[] int y_obs, real omega, vector alpha, vector beta, matrix X, vector beta_c){
     int N = size(y_obs);
     int P = num_elements(alpha);
     int Q = num_elements(beta);
@@ -2203,7 +2203,7 @@ vector ingarch(array[] int y_obs, real omega, vector alpha, vector beta, matrix 
 //@param array[] int y_obs
 //@math \log p(y) = \sum_{t=1}^{N}\log\text{Poisson}(y_t \mid \lambda_t)
 //@return real Log mass of y_obs
-real ingarch_lpmf(array[] int y_obs, real omega, vector alpha, vector beta){
+pub real ingarch_lpmf(array[] int y_obs, real omega, vector alpha, vector beta){
     return poisson_lpmf(y_obs | ingarch(y_obs, omega, alpha, beta));
 }
 
@@ -2217,7 +2217,7 @@ real ingarch_lpmf(array[] int y_obs, real omega, vector alpha, vector beta){
 //@param vector beta_c Covariate coefficients
 //@math \log p(y) = \sum_{t=1}^{N}\log\text{Poisson}(y_t \mid \lambda_t)
 //@return real Log mass of y_obs
-real ingarch_lpmf(array[] int y_obs, real omega, vector alpha, vector beta, matrix X, vector beta_c){
+pub real ingarch_lpmf(array[] int y_obs, real omega, vector alpha, vector beta, matrix X, vector beta_c){
     return poisson_lpmf(y_obs | ingarch(y_obs, omega, alpha, beta, X, beta_c));
 }
 
@@ -2229,7 +2229,7 @@ real ingarch_lpmf(array[] int y_obs, real omega, vector alpha, vector beta, matr
 //@param vector beta Intensity-lag coefficients
 //@math \lambda_t = \exp(\eta_t), \quad y_t \sim \text{Poisson}(\lambda_t), with \eta_t built from the drawn counts
 //@return array[H] int Simulated counts. poisson_rng errors if \lambda exceeds 2^{30}, so keep \omega modest.
-array[] int ingarch_rng(int H, real omega, vector alpha, vector beta){
+pub array[] int ingarch_rng(int H, real omega, vector alpha, vector beta){
     int P = num_elements(alpha);
     int Q = num_elements(beta);
     vector[H] lambda_t;
@@ -2254,7 +2254,7 @@ array[] int ingarch_rng(int H, real omega, vector alpha, vector beta){
 //@param vector beta Intensity-lag coefficients
 //@math The intensity recursion is replayed over y_{1:N}, then continued using the drawn counts
 //@return array[H] int Posterior predictive counts for t = N+1,...,N+H
-array[] int ingarch_forecast_rng(array[] int y_obs, int H, real omega, vector alpha, vector beta){
+pub array[] int ingarch_forecast_rng(array[] int y_obs, int H, real omega, vector alpha, vector beta){
     int N = size(y_obs);
     int P = num_elements(alpha);
     int Q = num_elements(beta);

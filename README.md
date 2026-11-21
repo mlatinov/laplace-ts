@@ -6,8 +6,6 @@ Like all Laplace libraries, `ts` compiles down to plain, readable Stan functions
 
 ## How it's organised
 
-[#how-its-organised](#how-its-organised)
-
 Every model in this library is a recursion over time, and the library gives you that recursion in four forms:
 
 1. **A primary** computes the model's driving quantity from the data — the conditional mean $\mu_t$ for the linear models, the conditional standard deviation $\sigma_t$ for GARCH, the conditional intensity $\lambda_t$ for INGARCH. Use it when you want the quantity itself, for a custom likelihood or for `transformed parameters`.
@@ -28,8 +26,6 @@ Note this is ARMAX, not regression-with-ARMA-errors: the regressors sit inside t
 
 ## Data-side helpers
 
-[#data-side-helpers](#data-side-helpers)
-
 These are pure data transformations. Run them once in `transformed data` when their inputs are data, or inline when they aren't.
 
 | Function | Returns | What it does |
@@ -47,8 +43,6 @@ These are pure data transformations. Run them once in `transformed data` when th
 The `L` overloads exist because `sar` adds an ordinary lag matrix to a seasonal one, and those two have different natural starting rows. Build both with `L = max(p, P * s)` or they won't line up. The two `un*` helpers are called for you inside `arima_forecast_rng` and `sarima_forecast_rng`; you only need them directly if you're forecasting by hand.
 
 ## Linear Gaussian mean models
-
-[#linear-gaussian-mean-models](#linear-gaussian-mean-models)
 
 All of these put $y_t \sim \mathcal{N}(\mu_t, \sigma)$ and differ only in how $\mu_t$ is built. $\varepsilon_t = y_t - \mu_t$ throughout, computed rather than sampled, and set to zero before the series starts.
 
@@ -75,8 +69,6 @@ This is the **additive** seasonal form, not the classical multiplicative $\phi(B
 
 ### Differencing and what it does to the likelihood
 
-[#differencing-and-what-it-does-to-the-likelihood](#differencing-and-what-it-does-to-the-likelihood)
-
 `arima_lpdf` and `sarima_lpdf` return the density of the **differenced** series:
 
 $$
@@ -88,8 +80,6 @@ Two models with different $d$ are therefore scoring different data, and their `l
 `arima_forecast_rng` and `sarima_forecast_rng` hide this: they difference, forecast on the differenced scale, and integrate back, so what you get out is on the level scale.
 
 ## Beyond the linear Gaussian mean
-
-[#beyond-the-linear-gaussian-mean](#beyond-the-linear-gaussian-mean)
 
 | Model | Arguments after `y_obs` | What it models |
 | --- | --- | --- |
@@ -145,8 +135,6 @@ The covariate overload adds $x_t^\top\beta_c$ to $\eta_t$, inside the link.
 
 ## The four forms, by name
 
-[#the-four-forms-by-name](#the-four-forms-by-name)
-
 For a model called `<name>`:
 
 | Form | Shape | Where it goes |
@@ -166,13 +154,11 @@ laplace doc ts::sarima_lpdf
 
 ## Installation
 
-[#installation](#installation)
+**Requires the laplace compiler 0.2 or newer.** `ts`'s public functions are marked with `pub` in its `.laplacelib` sources (there is no `exports` list in its `laplace.toml`), and the manifest declares `laplace = ">=0.2"`. Check your compiler with `laplace --version` and update it with `laplace self-update`. Tags up to `0.1.1` predate this and still build with older compilers.
 
 `ts` is distributed as a git-hosted Laplace library — there's no published registry entry yet, so it's added by pointing `laplace` (or `cmdlaplacer`, if you're working from R) directly at the repository. The package lives in the repository's `laplace/` subdirectory, so pass it as the subdir.
 
 ### Via the `laplace` CLI
-
-[#via-the-laplace-cli](#via-the-laplace-cli)
 
 From inside a Laplace project (a directory with its own `laplace.toml`):
 
@@ -181,8 +167,6 @@ laplace add ts --git https://github.com/mlatinov/laplace-ts --tag 0.1.0 --subdir
 ```
 
 ### Via R (`cmdlaplacer`)
-
-[#via-r-cmdlaplacer](#via-r-cmdlaplacer)
 
 ```
 library(cmdlaplacer)
@@ -199,13 +183,9 @@ Either way, this pins the dependency in your project's `laplace.toml`/`laplace.l
 
 ## Usage
 
-[#usage](#usage)
-
 Import the library in a `library { }` block and call its functions with the `ts::` namespace prefix.
 
 ### AR(p) with covariates and a forecast
-
-[#arp-with-covariates-and-a-forecast](#arp-with-covariates-and-a-forecast)
 
 The design matrix is built once in `transformed data`, so the AR mean costs one matrix–vector product per gradient. Note that `y` is scored from $t = p+1$ onwards: the first `p` observations are conditioned on, never modelled.
 
@@ -256,8 +236,6 @@ Drop `X`/`beta` from both calls for the plain AR model — the overload without 
 
 ### SARIMA on monthly data
 
-[#sarima-on-monthly-data](#sarima-on-monthly-data)
-
 One ordinary difference for the trend, one seasonal difference for the yearly cycle, and short AR/MA terms at both scales. The forecaster handles the integration back to levels.
 
 ```
@@ -306,8 +284,6 @@ generated quantities {
 `alpha` here is a drift on the twice-differenced scale, so it is *not* the level of the series. With $d = 1$ it is the average period-on-period change; with $d = 2$ it is the average change in that change, and a prior centred anywhere but zero is usually a mistake.
 
 ### ARMA mean with GARCH volatility
-
-[#arma-mean-with-garch-volatility](#arma-mean-with-garch-volatility)
 
 `garch` takes the conditional mean as a vector, so any mean model composes with it. Here the primary supplies $\mu_t$ and GARCH supplies $\sigma_t$, and the likelihood is written by hand because neither function alone is the whole model.
 
@@ -360,8 +336,6 @@ One caveat on that forecast block: `arma_forecast_rng` draws its own innovations
 
 ### From R
 
-[#from-r](#from-r)
-
 With `cmdlaplacer`, the `.laplace` file compiles straight to a `cmdstanr` model, and the generated `.stan` file stays on disk next to it:
 
 ```
@@ -375,9 +349,7 @@ fit$draws("y_forecast")
 
 ## Things to know
 
-[#things-to-know](#things-to-know)
-
-- **Use `target +=`, not `~`.** Laplace rewrites `ts::func(` calls, so write `target += ts::arma_lpdf(y | ...)`. The `y ~ ts::arma(...)` form won't resolve.
+- **`~` and `target +=` both work.** `y ~ ts::arma(alpha, phi, theta, sigma);` compiles to `y ~ ts__arma(...)`, which Stan resolves to `ts__arma_lpdf` like any user-defined distribution. Prefer `target += ts::arma_lpdf(y | alpha, phi, theta, sigma);` when you need the full log density (for example to compare models), since `~` lets Stan drop constant terms.
 - **Conditional likelihood only.** The first observations are conditioned on rather than modelled, which is what almost all applied Stan code does. The exact likelihood needs the stationary covariance of the initial state, which means solving a Lyapunov equation, and that isn't here.
 - **Stationarity and invertibility are not enforced.** There is no Monahan transform, no partial-autocorrelation reparameterization. Put informative priors on `phi` and `theta` — `normal(0, 0.5)` is a reasonable default — and check the posterior rather than the parameterization. If the sampler wanders into an explosive region your predictions will tell you loudly.
 - **`arima_lpdf` and `sarima_lpdf` score the differenced series.** `lp__` and `loo` are not comparable across models with different `d` or `D`.
@@ -393,7 +365,5 @@ fit$draws("y_forecast")
 - **No state-space models in 0.1.0.** Local level, local linear trend, stochastic seasonality, dynamic regression and stochastic volatility all need either a Kalman filter (to marginalise) or a per-timepoint parameter vector (to sample directly). Planned, but not here yet. Hidden Markov regime switching is likewise absent; `star` covers the regime-switching use case without the forward algorithm.
 
 ## License
-
-[#license](#license)
 
 See [LICENSE](https://github.com/mlatinov/laplace-ts/blob/main/LICENSE).
